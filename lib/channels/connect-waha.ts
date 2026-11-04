@@ -10,6 +10,7 @@ import type { WahaClient } from "@/lib/waha/client";
 import { WahaSessionError } from "@/lib/waha/client";
 import { sincronizarRecebimentoDeGrupos } from "@/lib/grupos/sincronizar-filtro";
 import { lerLimiteEstourado } from "@/lib/cobranca/limites";
+import { sincronizarWebhookDaSessao } from "@/lib/waha/webhook-por-sessao";
 
 const channelSchema = z.object({
   id: z.string().uuid(), organization_id: z.string().uuid(), waha_session_name: z.string(),
@@ -26,7 +27,7 @@ export class ChannelConnectionError extends Error {
   constructor(public readonly code: string, public readonly status: number, public readonly technical?: Record<string, unknown>) { super(code); }
 }
 type Transport = Pick<WahaClient, "createSession" | "startExistingSession" | "stopSession">
-  & Partial<Pick<WahaClient, "definirRecebimentoDeGrupos">>;
+  & Partial<Pick<WahaClient, "definirRecebimentoDeGrupos" | "garantirWebhookDaSessao">>;
 export interface ConnectChannelInput {
   organizationId: string; idempotencyKey: string; userId: string; requestId: string;
   displayName?: string; onboarding?: boolean; restart?: boolean;
@@ -112,6 +113,11 @@ export async function connectWahaChannel(authDb: SupabaseClient, serviceDb: Supa
     if (persisted.organization_id !== input.organizationId || persisted.id !== channel.id || persisted.status !== remote.status) {
       throw new Error("connection_checkpoint_mismatch");
     }
+    await sincronizarWebhookDaSessao(
+      serviceDb,
+      waha.garantirWebhookDaSessao ? (ref, url, hmac) => waha.garantirWebhookDaSessao!(ref, url, hmac) : undefined,
+      { organizationId: input.organizationId, channelSessionId: channel.id, sessionRef: channel.waha_session_name },
+    );
     // Sessão (re)criada nasce ignorando grupos; reativar um canal arquivado mantém
     // o mesmo id e as linhas LIGADAS de `channel_session_groups`. Ressincroniza o
     // filtro com o banco (sem PUT quando já está certo). Nunca lança.

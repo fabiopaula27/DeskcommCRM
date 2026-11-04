@@ -205,6 +205,9 @@ const schema = z.object({
   // contêiner do WAHA; o app precisa dele para CONFERIR a assinatura — e não o
   // declarava aqui, então nunca teve como verificar nada.
   WAHA_HMAC_SECRET: z.string().optional().default(""),
+  // Vazia: todas as sessões usam o WHATSAPP_HOOK_URL global. Preenchida com o
+  // endereço do app: cada sessão ganha a rota com o seu token (lib/waha/webhook-por-sessao.ts).
+  WAHA_WEBHOOK_SESSION_BASE_URL: z.string().optional().default(""),
   // "true" exige assinatura válida em todo webhook do WAHA. Fica desligado por
   // padrão porque sem a variável certa o WAHA não assina (medido: 2026.7.2
   // mandava os eventos sem header porque o compose entregava WHATSAPP_HOOK_HMAC,

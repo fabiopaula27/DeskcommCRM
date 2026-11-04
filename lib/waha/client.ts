@@ -10,6 +10,7 @@ import { describeWahaServer, type WahaServerCapabilities } from "@/lib/channels/
 
 import { logger } from "@/lib/logger";
 import { wahaPayloadSchema, type WahaPayload } from "@/lib/waha/envelope";
+import { CAMINHO_DO_WEBHOOK_WAHA, EVENTOS_DO_WEBHOOK_DA_SESSAO } from "@/lib/waha/webhook-por-sessao";
 import { classificarFalhaDeAlcance, explicarFalhaDeAlcance } from "@/lib/net/alcance";
 
 /**
@@ -557,6 +558,47 @@ export class WahaClient {
       // linha a única falha INVISÍVEL seria justamente a que faz a economia
       // não acontecer: a config fica velha e ninguém fica sabendo.
       logger.warn("[waha] não consegui falar com o WAHA para convergir a config", {
+        erro: err instanceof Error ? err.message : "unknown",
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Faz a sessão entregar na URL dada, lendo antes pelo mesmo motivo de
+   * `convergirConfigDaSessao`: o PUT substitui a config inteira. Webhook alheio
+   * fica; webhook nosso antigo sai. Sem mudança não há PUT, porque ele reinicia
+   * a sessão. Não lança: ver `sincronizarWebhookDaSessao`.
+   */
+  async garantirWebhookDaSessao(name: string, webhookUrl: string, hmacKey: string | null): Promise<boolean> {
+    const url = `${this.baseUrl}/api/sessions/${encodeURIComponent(name)}`;
+    try {
+      const atual = await this.fetchComTeto(url, { headers: { "X-Api-Key": this.apiKey } });
+      if (!atual.ok) return false;
+      const parsed = sessionSnapshotSchema.safeParse(await atual.json().catch(() => null));
+      if (!parsed.success || parsed.data.name !== name || !parsed.data.config) return false;
+
+      const config = parsed.data.config;
+      const existentes = (Array.isArray(config.webhooks) ? config.webhooks : []) as Array<{ url?: unknown }>;
+      const nossos = existentes.filter((w) => typeof w.url === "string" && w.url.includes(CAMINHO_DO_WEBHOOK_WAHA));
+      if (nossos.length === 1 && nossos[0]?.url === webhookUrl) return true;
+
+      const webhook = {
+        url: webhookUrl,
+        events: EVENTOS_DO_WEBHOOK_DA_SESSAO,
+        ...(hmacKey ? { hmac: { key: hmacKey } } : {}),
+      };
+      const res = await this.fetchComTeto(url, {
+        method: "PUT",
+        headers: { "X-Api-Key": this.apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          config: { ...config, webhooks: [...existentes.filter((w) => !nossos.includes(w)), webhook] },
+        }),
+      });
+      return res.ok;
+    } catch (err) {
+      logger.warn("[waha] não consegui gravar o webhook da sessão", {
         erro: err instanceof Error ? err.message : "unknown",
       });
       return false;

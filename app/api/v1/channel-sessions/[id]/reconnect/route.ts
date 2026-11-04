@@ -1,4 +1,5 @@
 import { requireSupportWrite } from "@/lib/impersonate/support";
+import { sincronizarWebhookDaSessao } from "@/lib/waha/webhook-por-sessao";
 /**
  * POST /api/v1/channel-sessions/[id]/reconnect — reconecta um canal caído.
  *
@@ -196,6 +197,13 @@ export async function POST(
     const { error: syncError } = await supabase.from("channel_sessions").update(patch).eq("organization_id", activeOrg.orgId).eq("id", id);
 
     if (syncError) throw new Error("connection_sync_failed");
+
+    // Também é por aqui que um número já conectado ganha o webhook próprio, sem QR.
+    await sincronizarWebhookDaSessao(
+      createAdminClient(),
+      (ref, url, hmac) => waha.garantirWebhookDaSessao(ref, url, hmac),
+      { organizationId: activeOrg.orgId, channelSessionId: id, sessionRef: nomeParaOTransporte },
+    );
 
     // A sessão recriada (volume do WAHA perdido, logout forçado) nasce ignorando
     // grupos, mas o banco pode ter grupos LIGADOS neste número. Ressincroniza o

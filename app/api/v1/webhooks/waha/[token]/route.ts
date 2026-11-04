@@ -22,6 +22,7 @@ import { conferirContratoWaha, lerRoteamentoWahaPorToken } from "@/lib/waha/enve
 import { processarEventoWaha, REENTREGA_EM_SEGUNDOS } from "@/lib/waha/desfecho-do-webhook";
 import { esquecerSessaoDoWebhook, sessaoDoWebhook } from "@/lib/waha/sessao-do-webhook";
 import { authenticateWahaWebhook } from "@/lib/waha/webhook-auth";
+import { eventoDeOutraSessao } from "@/lib/waha/webhook-por-sessao";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -158,6 +159,18 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
     return fail("unauthenticated", auth.reason, 401, { requestId });
   }
   const validSignature = auth.signatureVerified;
+
+  // O token diz de quem é a URL; o corpo diz de quem é o evento. Com um
+  // WHATSAPP_HOOK_URL global carregando este token, a mensagem de outro tenant
+  // cairia nesta organização. Nem arquiva: o corpo é dado de outro tenant. 200
+  // porque reentregar não muda nada. Ver lib/waha/webhook-por-sessao.ts.
+  if (eventoDeOutraSessao(roteado, session.waha_session_name)) {
+    logger.warn("[waha.webhook] evento de outra sessão recusado na rota por token", {
+      request_id: requestId,
+      channel_session_id: session.id,
+    });
+    return ok({ accepted: false, reason: "session_mismatch" }, { requestId });
+  }
 
   const eventType = roteado.event ?? "unknown";
   const externalId = roteado.payload?.id ?? null;
