@@ -1065,8 +1065,17 @@ function throwOnDbError(
  * teste que acompanha este handler (`tests/unit/contato-delete.test.ts`)
  * exercita a contagem com filtro de organização.
  */
-const VINCULOS_RESTRICT_NAO_APAGADOS: ReadonlyArray<{ tabela: string; rotulo: string }> = [
-  { tabela: "calendar_appointments", rotulo: "compromisso(s) na agenda" },
+const VINCULOS_RESTRICT_NAO_APAGADOS: ReadonlyArray<{
+  tabela: string;
+  rotulo: string;
+  /** Status que NÃO barra: a função da exclusão solta essas linhas da ficha. */
+  statusQueNaoBarra?: string;
+}> = [
+  // Compromisso CANCELADO não barra: cancelar na Agenda é o que a tela manda
+  // fazer, e antes disso não bastava (só apagar no banco resolvia). A
+  // `fn_apagar_contato_com_historico` (migration 9105) solta o cancelado da
+  // ficha e da conversa na mesma transação, e ele segue na Agenda.
+  { tabela: "calendar_appointments", rotulo: "compromisso(s) na agenda", statusQueNaoBarra: "cancelled" },
 ];
 
 /**
@@ -1123,7 +1132,8 @@ async function contarVinculosRestrict(
       .from(vinculo.tabela)
       .select("id", { count: "exact", head: true })
       .eq("contact_id", contactId)
-      .eq("organization_id", ctx.organization_id);
+      .eq("organization_id", ctx.organization_id)
+      .neq("status", vinculo.statusQueNaoBarra ?? "");
     if (error) {
       // Falha da CONTAGEM não autoriza seguir apagando: seguir aqui é cair no
       // defeito que esta pré-checagem existe para impedir (histórico

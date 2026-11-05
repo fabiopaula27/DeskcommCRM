@@ -35,6 +35,7 @@ const rpcs: Array<{ nome: string; args: Record<string, unknown> | undefined }> =
 
 interface CadeiaContagem {
   eq: (coluna: string, valor: unknown) => CadeiaContagem;
+  neq: (coluna: string, valor: unknown) => CadeiaContagem;
   maybeSingle: () => Promise<{ data: null; error: null }>;
   then: (resolve: (valor: unknown) => unknown) => unknown;
 }
@@ -71,6 +72,10 @@ function clienteFalso(opts?: OpcoesFake): unknown {
             const cadeia: CadeiaContagem = {
               eq: (coluna, valor) => {
                 filtros.push([coluna, valor]);
+                return cadeia;
+              },
+              neq: (coluna, valor) => {
+                filtros.push([`${coluna}<>`, valor]);
                 return cadeia;
               },
               maybeSingle: async () => ({ data: null, error: null }),
@@ -151,6 +156,8 @@ describe("deleteContactHandler", () => {
         filtros: [
           ["contact_id", CONTATO],
           ["organization_id", ORG],
+          // Compromisso cancelado não barra: a função o solta da ficha.
+          ["status<>", "cancelled"],
         ],
       },
     ]);

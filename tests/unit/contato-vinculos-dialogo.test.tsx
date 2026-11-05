@@ -98,15 +98,22 @@ const estado = vi.hoisted(() => ({
 function supabaseFalso() {
   const cadeiaDeContagem = () => {
     const filtros: Array<[string, unknown]> = [];
+    const diferentes: Array<[string, unknown]> = [];
     const cadeia: Record<string, unknown> = {};
     cadeia.select = () => cadeia;
     cadeia.eq = (coluna: string, valor: unknown) => {
       filtros.push([coluna, valor]);
       return cadeia;
     };
+    cadeia.neq = (coluna: string, valor: unknown) => {
+      diferentes.push([coluna, valor]);
+      return cadeia;
+    };
     cadeia.then = (resolver: (v: unknown) => unknown) => {
-      const contagem = estado.agenda.filter((linha) =>
-        filtros.every(([coluna, valor]) => linha[coluna] === valor),
+      const contagem = estado.agenda.filter(
+        (linha) =>
+          filtros.every(([coluna, valor]) => linha[coluna] === valor) &&
+          diferentes.every(([coluna, valor]) => linha[coluna] !== valor),
       ).length;
       return Promise.resolve({ count: contagem, error: null }).then(resolver);
     };
@@ -172,6 +179,20 @@ describe("GET /api/v1/contacts/[id]/vinculos — a pré-checagem", () => {
     });
   });
 
+  it("compromisso cancelado não barra: só o ativo é contado", async () => {
+    estado.agenda = [
+      { contact_id: CONTATO, organization_id: ORG, status: "cancelled" },
+      { contact_id: CONTATO, organization_id: ORG, status: "scheduled" },
+    ];
+
+    const { body } = await consultarRota();
+
+    expect((body as unknown as { data: unknown }).data).toEqual({
+      vinculos: ["1 compromisso(s) na agenda"],
+      por_tabela: { calendar_appointments: 1 },
+    });
+  });
+
   it("o compromisso de outra organização não aparece", async () => {
     estado.agenda = [{ contact_id: CONTATO, organization_id: ORG_ALHEIA }];
 
@@ -225,7 +246,7 @@ describe("diálogo 'Excluir contato?' — o aviso antes do clique", () => {
 
     expect(
       await screen.findByText(
-        "Este contato tem 1 compromisso na Agenda. Cancele ou apague o compromisso antes de excluir.",
+        "Este contato tem 1 compromisso na Agenda. Cancele o compromisso na Agenda antes de excluir.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Abrir Agenda" })).toHaveAttribute(
