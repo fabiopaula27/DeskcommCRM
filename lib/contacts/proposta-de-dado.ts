@@ -42,7 +42,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  lerEmailDeFichaVazia,
   lerTelefoneDeFichaVazia,
+  registrarEmailAplicadoNaTimeline,
   registrarTelefoneAplicadoNaTimeline,
 } from "@/lib/contacts/telefone-aplicado";
 import { logger } from "@/lib/logger";
@@ -77,7 +79,13 @@ export type ResultadoDaProposta =
    * E.164. Motivo fora de `MotivoSemProposta` de propósito: quem lê o tipo
    * precisa ver que este desfecho tem `telefone` e que ele não é uma recusa.
    */
-  | { criada: false; motivo: "aplicado_automaticamente"; telefone: string };
+  | { criada: false; motivo: "aplicado_automaticamente"; telefone: string }
+  /**
+   * O E-MAIL de ficha vazia foi GRAVADO (opção `crm.email_de_ficha_vazia`).
+   * Sem isso o convite do Google Agenda, que sai quando o compromisso nasce,
+   * não tinha para onde ir enquanto a proposta esperava alguém.
+   */
+  | { criada: false; motivo: "aplicado_automaticamente"; email: string };
 
 export interface DadosDaProposta {
   organizationId: string;
@@ -253,6 +261,31 @@ export async function proporDadoDoContato(
     }
   }
 
+  // ── E-MAIL DE FICHA VAZIA: a mesma exceção, com o interruptor PRÓPRIO ─────
+  //
+  // Só e-mail, só ficha SEM e-mail, só com `crm.email_de_ficha_vazia` ligado.
+  // E-mail existente diferente continua virando proposta. E-mail que já é de
+  // OUTRO contato da organização (`uniq_contacts_org_email` → 23505), corrida
+  // perdida e erro de banco caem na proposta de sempre.
+  if (campo === "email" && !atual?.trim() && (await lerEmailDeFichaVazia(db, organizationId))) {
+    const gravado = await gravarEmailDeFichaVazia(db, {
+      organizationId,
+      contactId,
+      email: valor,
+      consentAtual: ((contato as Record<string, unknown>).consent as Record<string, unknown> | null) ?? null,
+    });
+    if (gravado) {
+      await registrarEmailAplicadoNaTimeline(db, {
+        organizationId,
+        contactId,
+        email: valor,
+        agentId: dados.agentId ?? null,
+        trecho: dados.trecho ?? null,
+      });
+      return { criada: false, motivo: "aplicado_automaticamente", email: valor };
+    }
+  }
+
   const expiraEm = new Date(
     Date.now() + (dados.diasDePrazo ?? PRAZO_PADRAO_DIAS) * 24 * 3600_000,
   ).toISOString();
@@ -366,6 +399,42 @@ async function gravarTelefoneDeFichaVazia(
   });
 
   return true;
+}
+
+/**
+ * A escrita do e-mail de ficha vazia — a MESMA trava do telefone: `email is
+ * null` DENTRO do UPDATE, e `consent.transactional` mesclado no mesmo ato.
+ * `true` só quando UMA linha foi gravada.
+ */
+async function gravarEmailDeFichaVazia(
+  db: SupabaseClient,
+  p: {
+    organizationId: string;
+    contactId: string;
+    email: string;
+    consentAtual: Record<string, unknown> | null;
+  },
+): Promise<boolean> {
+  const { data, error } = await db
+    .from("contacts")
+    .update({
+      email: p.email,
+      consent: {
+        ...(p.consentAtual ?? {}),
+        transactional: {
+          granted: true,
+          granted_at: new Date().toISOString(),
+          source: "informado pelo titular em atendimento; aplicado automaticamente sem decisão humana",
+        },
+      },
+    })
+    .eq("organization_id", p.organizationId)
+    .eq("id", p.contactId)
+    .is("email", null)
+    .select("id");
+
+  if (error) return false;
+  return Array.isArray(data) && data.length === 1;
 }
 
 /**

@@ -4,7 +4,7 @@ import type { Actor } from "@/lib/api/handlers/types";
 import { resolveActiveLeadForContact, type LeadCandidate } from "@/lib/leads/active-lead";
 import { emitLeadActivity } from "@/lib/leads/activity-emitter";
 import { logger } from "@/lib/logger";
-import { telefoneDeFichaVaziaLigado } from "@/lib/schemas/settings";
+import { emailDeFichaVaziaLigado, telefoneDeFichaVaziaLigado } from "@/lib/schemas/settings";
 
 /**
  * O INTERRUPTOR E O RASTRO do telefone aplicado sozinho (#2593).
@@ -49,6 +49,31 @@ export async function lerTelefoneDeFichaVazia(
   }
   if (!data) return false;
   return telefoneDeFichaVaziaLigado((data as { settings?: unknown }).settings);
+}
+
+/**
+ * O interruptor do E-MAIL de ficha vazia — mesma régua do telefone: desligado
+ * por padrão, e falha LÊ COMO DESLIGADO (devolve a proposta de sempre).
+ */
+export async function lerEmailDeFichaVazia(
+  db: SupabaseClient,
+  organizationId: string,
+): Promise<boolean> {
+  const { data, error } = await db
+    .from("organizations")
+    .select("settings")
+    .eq("id", organizationId)
+    .maybeSingle();
+
+  if (error) {
+    logger.warn("[email-de-ficha-vazia] leitura do interruptor falhou", {
+      organization_id: organizationId,
+      error: error.message,
+    });
+    return false;
+  }
+  if (!data) return false;
+  return emailDeFichaVaziaLigado((data as { settings?: unknown }).settings);
 }
 
 /** O módulo de origem da linha, e o ator quando não há agente identificado. */
@@ -116,6 +141,26 @@ export async function registrarNomeAplicadoNaTimeline(
     agentId: p.agentId,
     reason: `Nome aplicado na ficha pelo assistente: ${p.nome}`,
     payload: { campo: "name", nome: p.nome, automatico: true },
+  });
+}
+
+/** O E-MAIL que entrou sozinho na ficha vazia — a mesma linha do telefone. */
+export async function registrarEmailAplicadoNaTimeline(
+  db: SupabaseClient,
+  p: {
+    organizationId: string;
+    contactId: string;
+    email: string;
+    agentId?: string | null;
+    trecho?: string | null;
+  },
+): Promise<boolean> {
+  return registrarCampoAplicadoNaTimeline(db, {
+    organizationId: p.organizationId,
+    contactId: p.contactId,
+    agentId: p.agentId,
+    reason: `E-mail aplicado na ficha pelo assistente: ${p.email}`,
+    payload: { campo: "email", email: p.email, automatico: true, trecho: p.trecho ?? null },
   });
 }
 

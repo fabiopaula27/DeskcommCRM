@@ -25,12 +25,13 @@ import { createClient } from "@/lib/supabase/server";
 import { loadChannelRoutingSettings } from "@/lib/routing/channel-policies";
 import { configAssinatura } from "@/lib/messaging/assinatura";
 import { podeAdministrarEmpresa } from "@/lib/auth/pode-administrar-empresa";
-import { regrasDeCliente, telefoneDeFichaVaziaLigado, nomeInformadoLigado } from "@/lib/schemas/settings";
+import { emailDeFichaVaziaLigado, regrasDeCliente, telefoneDeFichaVaziaLigado, nomeInformadoLigado } from "@/lib/schemas/settings";
 import { AssinaturaForm } from "./_assinatura-form";
 import { ClientePelaVenda } from "./_clientePelaVenda";
 import { ChannelRoutingForm } from "./_channels-form";
 import { AtendimentoForm } from "./_form";
 import { TelefoneDeFichaVazia } from "./_telefoneDeFichaVazia";
+import { EmailDeFichaVazia } from "./_emailDeFichaVazia";
 import { NomeInformado } from "./_nomeInformado";
 import { traduzir } from "@/lib/i18n/dicionario";
 
@@ -99,6 +100,11 @@ export default async function AtendimentoSettingsPage() {
       <NomeInformado ligada={nomeInformadoLigado({ crm: settings.crm })} idioma={idioma} podeMudar={podeAdministrarEmpresa(user, activeOrg)} />
       <TelefoneDeFichaVazia
         ligada={telefoneDeFichaVazia}
+        idioma={idioma}
+        podeMudar={podeAdministrarEmpresa(user, activeOrg)}
+      />
+      <EmailDeFichaVazia
+        ligada={emailDeFichaVaziaLigado({ crm: settings.crm })}
         idioma={idioma}
         podeMudar={podeAdministrarEmpresa(user, activeOrg)}
       />

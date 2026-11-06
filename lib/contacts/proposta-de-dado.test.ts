@@ -299,7 +299,7 @@ function dbDeTelefone(
               select: async () => {
                 atualizacoes.push({ patch, filtros });
                 if (opcao.erroNoUpdate) return { data: null, error: opcao.erroNoUpdate };
-                const travou = filtros["phone_number IS"] === null;
+                const travou = filtros["phone_number IS"] === null || filtros["email IS"] === null;
                 const linhas = travou ? (opcao.linhasAtualizadas ?? 1) : 0;
                 return { data: linhas > 0 ? [{ id: contato.id }] : [], error: null };
               },
@@ -633,5 +633,104 @@ describe("#2593: o telefone informado pelo cliente", () => {
     });
     expect(r2.criada, JSON.stringify(r2)).toBe(true);
     expect(duplicado.inseridas).toHaveLength(1);
+  });
+});
+
+// --------------------------------------------------------------------------
+// O e-mail informado pelo cliente é aplicado SOZINHO na ficha sem e-mail
+// --------------------------------------------------------------------------
+
+const EMAIL_LIGADO = { crm: { telefone_de_ficha_vazia: false, email_de_ficha_vazia: true } };
+
+describe("o e-mail informado pelo cliente (crm.email_de_ficha_vazia)", () => {
+  it("ficha SEM e-mail com a opção LIGADA: grava sozinho, minúsculo, com trava e rastro", async () => {
+    const { db, inseridas, atualizacoes, atividades } = dbDeTelefone({ ...FICHA_VAZIA }, { settings: EMAIL_LIGADO });
+
+    const r = await proporDadoDoContato(db, {
+      organizationId: ORG,
+      contactId: CONTATO,
+      campo: "email",
+      valor: " Fabio@Exemplo.com ",
+      trecho: "meu e-mail é Fabio@Exemplo.com",
+    });
+
+    expect(r).toEqual({ criada: false, motivo: "aplicado_automaticamente", email: "fabio@exemplo.com" });
+    expect(inseridas, "nada entra na fila quando o e-mail já foi gravado").toHaveLength(0);
+    expect(atualizacoes).toHaveLength(1);
+    const { patch, filtros } = atualizacoes[0]!;
+    expect(patch.email).toBe("fabio@exemplo.com");
+    expect(filtros).toMatchObject({ organization_id: ORG, id: CONTATO, "email IS": null });
+    expect(patch.consent).toMatchObject({
+      marketing: { granted: true, granted_at: "2026-01-01T00:00:00.000Z" },
+      transactional: { granted: true },
+    });
+    expect(atividades, "o rastro na linha do tempo nasce").toHaveLength(1);
+  });
+
+  it("opção DESLIGADA (padrão): o e-mail vira PROPOSTA, como sempre", async () => {
+    const { db, inseridas, atualizacoes } = dbDeTelefone({ ...FICHA_VAZIA }, { settings: {} });
+    const r = await proporDadoDoContato(db, {
+      organizationId: ORG,
+      contactId: CONTATO,
+      campo: "email",
+      valor: "fabio@exemplo.com",
+    });
+    expect(r.criada, JSON.stringify(r)).toBe(true);
+    expect(atualizacoes).toHaveLength(0);
+    expect(inseridas).toHaveLength(1);
+  });
+
+  it("a opção do TELEFONE não liga o e-mail", async () => {
+    const { db, inseridas, atualizacoes } = dbDeTelefone({ ...FICHA_VAZIA }, { settings: OPCAO_LIGADA });
+    const r = await proporDadoDoContato(db, {
+      organizationId: ORG,
+      contactId: CONTATO,
+      campo: "email",
+      valor: "fabio@exemplo.com",
+    });
+    expect(r.criada, JSON.stringify(r)).toBe(true);
+    expect(atualizacoes).toHaveLength(0);
+    expect(inseridas).toHaveLength(1);
+  });
+
+  it("ficha JÁ COM e-mail: nunca sobrescreve, nasce proposta com o valor anterior", async () => {
+    const { db, inseridas, atualizacoes } = dbDeTelefone(
+      { ...FICHA_VAZIA, email: "antigo@exemplo.com" },
+      { settings: EMAIL_LIGADO },
+    );
+    const r = await proporDadoDoContato(db, {
+      organizationId: ORG,
+      contactId: CONTATO,
+      campo: "email",
+      valor: "novo@exemplo.com",
+    });
+    expect(r.criada, JSON.stringify(r)).toBe(true);
+    expect(atualizacoes).toHaveLength(0);
+    expect(inseridas[0]).toMatchObject({ campo: "email", valor_anterior: "antigo@exemplo.com" });
+  });
+
+  it("e-mail de OUTRO contato (23505) ou corrida perdida: cai na proposta", async () => {
+    const duplicado = dbDeTelefone(
+      { ...FICHA_VAZIA },
+      { settings: EMAIL_LIGADO, erroNoUpdate: { code: "23505", message: "duplicate key" } },
+    );
+    const r1 = await proporDadoDoContato(duplicado.db, {
+      organizationId: ORG,
+      contactId: CONTATO,
+      campo: "email",
+      valor: "fabio@exemplo.com",
+    });
+    expect(r1.criada, JSON.stringify(r1)).toBe(true);
+    expect(duplicado.inseridas).toHaveLength(1);
+
+    const corrida = dbDeTelefone({ ...FICHA_VAZIA }, { settings: EMAIL_LIGADO, linhasAtualizadas: 0 });
+    const r2 = await proporDadoDoContato(corrida.db, {
+      organizationId: ORG,
+      contactId: CONTATO,
+      campo: "email",
+      valor: "fabio@exemplo.com",
+    });
+    expect(r2.criada, JSON.stringify(r2)).toBe(true);
+    expect(corrida.inseridas).toHaveLength(1);
   });
 });

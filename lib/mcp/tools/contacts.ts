@@ -271,10 +271,11 @@ export const crmProposeContactField: McpToolDefinition<typeof propostaShape> = {
     "inclusive uma resposta direta à pergunta sobre seu nome. Não trate saudações, concordância, " +
     "negativas, pedidos, perguntas ou instruções como nomes, nem nome de outra pessoa. " +
     "Copie o nome informado, sem inventar ou completar. EXCEÇÕES com opção da organização ligada: " +
-    "um TELEFONE para ficha SEM número pode ser gravado em E.164; um NOME de pelo menos duas partes " +
+    "um TELEFONE para ficha SEM número pode ser gravado em E.164; um E-MAIL para ficha SEM e-mail pode ser gravado; " +
+    "um NOME de pelo menos duas partes " +
     "para ficha SEM nome pode ser gravado quando o servidor confirmar a mensagem real deste turno. " +
     "As opções vêm desligadas. Só o retorno motivo aplicado_automaticamente permite dizer que o cadastro " +
-    "foi atualizado. Nome ou telefone preexistente diferente, email e nascimento exigem revisão humana. " +
+    "foi atualizado. Nome, telefone ou e-mail preexistente diferente e nascimento exigem revisão humana. " +
     "Sem esse motivo no retorno, diga apenas que alguém vai conferir. Proposta já pendente ou contato " +
     "anonimizado pode impedir o registro.",
   inputSchema: propostaShape,
@@ -340,6 +341,34 @@ export const crmProposeContactField: McpToolDefinition<typeof propostaShape> = {
       // Este é o ÚNICO desfecho em que a mensagem pode ser repetida ao
       // cliente — ele aconteceu de verdade. Os de baixo continuam sendo do
       // fluxo interno, para o modelo decidir o que fazer em seguida.
+      if (r.motivo === "aplicado_automaticamente" && "email" in r) {
+        await audit({
+          action: "contact.field_auto_applied",
+          actorUserId: a.actorUserId,
+          organizationId: ctx.organizationId,
+          resourceType: "contact",
+          resourceId: input.contact_id,
+          requestId: ctx.requestId,
+          // Sem o `trecho`, pelo mesmo motivo do telefone: ele mora na timeline,
+          // que a cascata da LGPD limpa; a auditoria não é alcançada por ela.
+          metadata: {
+            ...a.metadataActor,
+            campo: "email",
+            old_value: null,
+            new_value: r.email,
+            automatico: true,
+            legal_basis: "L-05 transactional (dado informado pelo titular em atendimento iniciado por ele)",
+          },
+        });
+        return {
+          proposta_criada: false,
+          motivo: r.motivo,
+          email: r.email,
+          mensagem:
+            `este contato estava SEM e-mail e o e-mail que a pessoa informou (${r.email}) foi GRAVADO no ` +
+            "cadastro; pode dizer ao cliente que ficou anotado. Um e-mail que já existia nunca é substituído.",
+        };
+      }
       if (r.motivo === "aplicado_automaticamente") {
         await audit({
           action: "contact.field_auto_applied",

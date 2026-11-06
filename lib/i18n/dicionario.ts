@@ -14231,6 +14231,19 @@ export const DICIONARIO: Traducoes = {
   },
   // #2593, item 1 do CR — a opção por organização em Configurações ›
   // Distribuição de atendimento, e o interruptor que a liga.
+  // E-mail de ficha vazia — irmão do telefone, mesma tela.
+  "E-mail informado pelo cliente entra sozinho na ficha sem e-mail": {
+    es: "El correo que informa el cliente entra solo en la ficha sin correo",
+  },
+  "Quando o cliente diz o e-mail numa conversa e a ficha do contato está SEM e-mail, ele é gravado na hora, sem esperar alguém confirmar — assim o convite do Google Agenda já sai para ele quando a reunião é marcada. Aparece na linha do tempo do contato quando ele tem um negócio aberto. Nunca troca o e-mail de quem já tem um, e um e-mail que já é de outro contato continua virando proposta. Vem desligada.": {
+    es: "Cuando el cliente dice su correo en una conversación y la ficha del contacto está SIN correo, se guarda al instante, sin esperar a que alguien confirme — así la invitación de Google Calendar ya le llega cuando se agenda la reunión. Aparece en la línea de tiempo del contacto cuando tiene un negocio abierto. Nunca cambia el correo de quien ya tiene uno, y un correo que ya es de otro contacto sigue siendo una propuesta. Viene desactivada.",
+  },
+  "Ligado: o e-mail de um cadastro sem e-mail entra sozinho, e fica registrado na linha do tempo quando o contato tem um negócio aberto.": {
+    es: "Activado: el correo de un registro sin correo entra solo, y queda registrado en la línea de tiempo cuando el contacto tiene un negocio abierto.",
+  },
+  "Desligado: todo e-mail informado vira proposta, como o resto do dado ouvido na conversa.": {
+    es: "Desactivado: todo correo informado se convierte en propuesta, como el resto de los datos oídos en la conversación.",
+  },
   "Telefone informado pelo cliente entra sozinho na ficha sem número": {
     es: "El teléfono que informa el cliente entra solo en la ficha sin número",
   },

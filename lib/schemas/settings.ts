@@ -686,6 +686,14 @@ export const crmSettingsSchema = z
      * o bloco que as regras de contato já usam.
      */
     telefone_de_ficha_vazia: z.boolean().catch(false),
+    /**
+     * `email_de_ficha_vazia`: o e-mail que o cliente diz na conversa entra
+     * SOZINHO na ficha SEM e-mail — a mesma exceção do telefone, pelo mesmo
+     * motivo medido: o convite do Google Agenda sai no instante em que o
+     * compromisso nasce, só para o e-mail que ESTÁ na ficha, e a proposta ainda
+     * esperava alguém aprovar. NASCE DESLIGADA; só o booleano `true` liga.
+     */
+    email_de_ficha_vazia: z.boolean().catch(false),
     nome_informado_no_atendimento: z.boolean().catch(false),
     /**
      * `avisar_transferencia_no_whatsapp` (#3784): a transferência para atendimento
@@ -731,6 +739,7 @@ export const crmSettingsSchema = z
     internal_contact_tags: [],
     team_contact_tags: [],
     telefone_de_ficha_vazia: false,
+    email_de_ficha_vazia: false,
     nome_informado_no_atendimento: false,
     avisar_transferencia_no_whatsapp: true,
     cliente_pela_venda: false,
@@ -817,6 +826,14 @@ export function tagsDaEquipeDaOrg(settings: unknown): string[] {
  * gravado), e um `settings` torto nunca liga uma escrita automática por
  * acidente.
  */
+export function emailDeFichaVaziaLigado(settings: unknown): boolean {
+  const crm =
+    settings && typeof settings === "object" && !Array.isArray(settings)
+      ? (settings as Record<string, unknown>).crm
+      : undefined;
+  return crmSettingsSchema.parse(crm ?? {}).email_de_ficha_vazia === true;
+}
+
 export function telefoneDeFichaVaziaLigado(settings: unknown): boolean {
   const crm =
     settings && typeof settings === "object" && !Array.isArray(settings)
