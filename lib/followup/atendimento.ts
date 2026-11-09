@@ -720,7 +720,47 @@ export async function gravarRespostaNoContato(
       where organization_id = $1 and id = $2 and not coalesce(is_anonymized, false)`,
     [args.organizationId, args.contactId, args.campo, args.valor],
   );
-  return (r.rowCount ?? 0) > 0;
+  const gravou = (r.rowCount ?? 0) > 0;
+  if (gravou) await aplicarEmailDaRespostaNaFicha(db, args);
+  return gravou;
+}
+
+const PARECE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Resposta de roteiro que É um e-mail entra também em `contacts.email` — só
+ * quando a ficha não tem e-mail e a organização ligou
+ * `settings.crm.email_de_ficha_vazia` (o mesmo interruptor da proposta de dado).
+ * Sem isto, "Qual o seu e-mail?" ficava só em `custom_fields`, e o convite do
+ * Google e o e-mail da automação saíam sem destinatário. Nunca sobrescreve,
+ * nunca colide com outra ficha (índice `uniq_contacts_org_email`), e falha aqui
+ * não derruba a gravação da resposta.
+ */
+async function aplicarEmailDaRespostaNaFicha(
+  db: BancoDoRoteiro,
+  args: { organizationId: string; contactId: string; valor: string },
+): Promise<void> {
+  const email = args.valor.trim().toLowerCase();
+  if (!PARECE_EMAIL.test(email)) return;
+  try {
+    await db.query(
+      `update contacts
+          set email = $3, updated_at = now()
+        where organization_id = $1 and id = $2
+          and (email is null or btrim(email) = '')
+          and not coalesce(is_anonymized, false)
+          and exists (select 1 from organizations o
+                       where o.id = $1
+                         and (o.settings -> 'crm' ->> 'email_de_ficha_vazia') = 'true')
+          and not exists (select 1 from contacts c2
+                           where c2.organization_id = $1 and c2.id <> $2
+                             and lower(c2.email) = $3 and c2.is_merged_into is null)`,
+      [args.organizationId, args.contactId, email],
+    );
+  } catch {
+    // Corrida com outra ficha (23505) ou banco indisponível: a resposta já está
+    // em custom_fields; a ficha fica como estava.
+  }
 }
 
 /**
