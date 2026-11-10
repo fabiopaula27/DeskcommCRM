@@ -641,6 +641,30 @@ export function ContactDetailClient({ contactId, paineisDeModulo = [], acessosMc
                       ))}
                 </dd>
               </div>
+              {/* Campos personalizados do CONTATO (escopo `contato` do funil
+                  padrão), só leitura — editar continua no diálogo Editar. */}
+              {camposPorEscopo(
+                camposDoFunil(pipelineQuery.data?.pipeline.settings ?? null),
+                "contato",
+              ).map((campo) => {
+                const bruto = (contact.custom_fields as Record<string, unknown> | null)?.[campo.key];
+                const texto =
+                  bruto === null || bruto === undefined || bruto === ""
+                    ? "—"
+                    : Array.isArray(bruto)
+                      ? bruto.join(", ")
+                      : typeof bruto === "boolean"
+                        ? bruto
+                          ? t("Sim")
+                          : t("Não")
+                        : String(bruto);
+                return (
+                  <div key={campo.key} data-testid={`campo-do-contato-${campo.key}`}>
+                    <dt className="text-xs uppercase text-muted-foreground">{campo.label}</dt>
+                    <dd className="mt-1 break-words">{texto}</dd>
+                  </div>
+                );
+              })}
             </dl>
           </Card>
           {/* CARTEIRA DO CLIENTE (#2591): de quem é este cliente. Fica na Visão
