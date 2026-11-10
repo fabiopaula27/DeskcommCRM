@@ -26,6 +26,9 @@ import { useDefinirCorDaEtiqueta } from "@/hooks/tags/useDefinirCorDaEtiqueta";
 import { AbrirConversaAposSalvar } from "@/components/channels/AbrirConversaAposSalvar";
 import type { AlvoDeConversa } from "@/components/channels/SeletorDeCanalParaConversa";
 import { EtiquetasDoContato } from "@/components/contacts/EtiquetasDoContato";
+import { CustomFieldsEditor } from "@/components/contacts/CustomFieldsEditor";
+import { useDefaultPipeline } from "@/hooks/pipelines/useDefaultPipeline";
+import { camposDoFunil, camposPorEscopo } from "@/lib/leads/campos-do-funil";
 
 interface FormShape {
   name?: string;
@@ -34,6 +37,8 @@ interface FormShape {
   cpf?: string;
   /** As etiquetas do contato novo — o seletor grava esta lista. */
   tags?: string[];
+  /** Campos personalizados do CONTATO (escopo `contato` do funil padrão). */
+  custom_fields?: Record<string, unknown>;
 }
 
 interface Props {
@@ -123,8 +128,15 @@ export function NewContactDialog({
       phone_number: "",
       cpf: "",
       tags: [],
+      custom_fields: {},
     },
   });
+  const funilPadrao = useDefaultPipeline(open);
+  const camposDoContato = camposPorEscopo(
+    camposDoFunil(funilPadrao.data?.pipeline?.settings ?? null),
+    "contato",
+  );
+  const customFields = useWatch({ control: form.control, name: "custom_fields" }) ?? {};
 
   const cpfError = form.formState.errors.cpf;
   // ENQUANTO O DOCUMENTO ESTIVER INVÁLIDO, O ENVIO FICA IMPEDIDO (#3496).
@@ -187,6 +199,12 @@ export function NewContactDialog({
     if (values.phone_number?.trim()) payload.phone_number = values.phone_number.trim();
     if (values.cpf?.trim()) payload.cpf = values.cpf.trim();
     if (tags.length) payload.tags = tags;
+    const preenchidos = Object.fromEntries(
+      Object.entries(values.custom_fields ?? {}).filter(
+        ([, v]) => v !== undefined && v !== null && v !== "",
+      ),
+    );
+    if (Object.keys(preenchidos).length) payload.custom_fields = preenchidos;
 
     // A MESMA régua do servidor: a tela que mostra 'Bilhete' não pode
     // recusá-lo como CPF antes de chegar lá.
@@ -316,6 +334,22 @@ export function NewContactDialog({
               erroNoVocabulario={vocabulario.isError || buscaNoVocabulario.isError}
             />
           </div>
+          {camposDoContato.length > 0 && (
+            <div className="space-y-3 rounded-md border border-border p-3">
+              <div>
+                <h3 className="text-sm font-medium">{t("Campos personalizados")}</h3>
+                <p className="text-xs text-muted-foreground">
+                  {t("Campos definidos no funil padrão da organização.")}
+                </p>
+              </div>
+              <CustomFieldsEditor
+                fields={camposDoContato}
+                mode="contact"
+                value={customFields}
+                onChange={(next) => form.setValue("custom_fields", next, { shouldDirty: true })}
+              />
+            </div>
+          )}
           {serverError && (
             <p className="text-sm text-error-fg">{serverError}</p>
           )}
