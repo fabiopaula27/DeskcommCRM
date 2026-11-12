@@ -13,6 +13,12 @@ import { apiClient } from "@/lib/api/client";
 import { useT } from "@/hooks/i18n/useT";
 import { rodapeDeSaida } from "@/lib/prospecting/rodape-de-saida";
 import {
+  CAMPOS_FIXOS_DA_PLANILHA,
+  type CampoPersonalizadoDaPlanilha,
+  type ColunaDaPlanilha,
+  type DestinoDaColuna,
+} from "@/lib/prospecting/planilha";
+import {
   RAZAO_NAO_SELECIONADA,
   campaignConfigSchema,
   safePublicLink,
@@ -301,6 +307,12 @@ export function ProspectingClient() {
     total: number;
   } | null>(null);
   const [recusadasDaImportacao, setRecusadasDaImportacao] = useState<RecusadaDaLinha[]>([]);
+  // "Relacionar colunas": as colunas do arquivo com o destino de cada uma. Nasce da
+  // conferência (o servidor sugere) e, depois que o operador mexe, vai junto em todo envio.
+  const [colunasDaLista, setColunasDaLista] = useState<ColunaDaPlanilha[] | null>(null);
+  const [personalizadosDaLista, setPersonalizadosDaLista] = useState<
+    CampoPersonalizadoDaPlanilha[]
+  >([]);
   const [campaignDrafts, setCampaignDrafts] = useState<Record<string, CampaignConfig>>({});
   const [manualCampaigns, setManualCampaigns] = useState<Record<string, boolean>>({});
   const [createdAgents, setCreatedAgents] = useState<{ id: string; name: string }[]>([]);
@@ -450,6 +462,7 @@ export function ProspectingClient() {
       origemDaLista,
       avaliarSiteLista,
       gerarPreviaLista,
+      colunasDaLista?.map((c) => c.destino) ?? null,
     ]);
     if (importAttempt.current?.fingerprint !== fingerprint)
       importAttempt.current = { fingerprint, id: randomId() };
@@ -461,6 +474,7 @@ export function ProspectingClient() {
     form.set("avaliar_site", String(avaliarSiteLista));
     form.set("gerar_previa", String(avaliarSiteLista && gerarPreviaLista));
     form.set("previa", String(somentePrevia));
+    if (colunasDaLista) form.set("mapa", JSON.stringify(colunasDaLista.map((c) => c.destino)));
     form.set("file", arquivo);
     return form;
   }
@@ -485,9 +499,25 @@ export function ProspectingClient() {
           recusadas: RecusadaDaLinha[];
           total_recusadas: number;
           total_linhas: number;
+          colunas?: ColunaDaPlanilha[];
+          campos_personalizados?: CampoPersonalizadoDaPlanilha[];
         };
-        error?: { message?: string; details?: { recusadas?: RecusadaDaLinha[] } };
+        error?: {
+          message?: string;
+          details?: {
+            recusadas?: RecusadaDaLinha[];
+            colunas?: ColunaDaPlanilha[];
+            campos_personalizados?: CampoPersonalizadoDaPlanilha[];
+          };
+        };
       } | null;
+      const colunas = corpo?.data?.colunas ?? corpo?.error?.details?.colunas;
+      if (colunas && colunas.length > 0) {
+        setColunasDaLista(colunas);
+        setPersonalizadosDaLista(
+          corpo?.data?.campos_personalizados ?? corpo?.error?.details?.campos_personalizados ?? [],
+        );
+      }
       if (!res.ok || !corpo?.data?.previa) {
         setError(corpo?.error?.message ?? t("Não foi possível conferir a planilha."));
         setRecusadasDaImportacao(corpo?.error?.details?.recusadas ?? []);
@@ -549,6 +579,7 @@ export function ProspectingClient() {
       setSelected(r.campaign_id);
       importAttempt.current = null;
       setArquivo(null);
+      setColunasDaLista(null);
       setArquivoKey((k) => k + 1);
       await query.refetch();
     } catch {
@@ -1011,7 +1042,10 @@ export function ProspectingClient() {
               className="mt-4 space-y-4"
               onSubmit={async (e) => {
                 e.preventDefault();
-                await importarPlanilha();
+                // Primeiro clique abre "Relacionar colunas" (com a conferência); o seguinte importa
+                // com a relação que o operador viu.
+                if (!colunasDaLista) await conferirLista();
+                else await importarPlanilha();
               }}
             >
               <div>
@@ -1021,7 +1055,12 @@ export function ProspectingClient() {
                   id="prospecting-arquivo"
                   type="file"
                   accept=".csv,.xlsx"
-                  onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
+                  onChange={(e) => {
+                    setArquivo(e.target.files?.[0] ?? null);
+                    // Arquivo novo, colunas novas: a relação do anterior não vale para ele.
+                    setColunasDaLista(null);
+                    setPreviaDaLista(null);
+                  }}
                   required
                   className="mt-1 block w-full text-sm"
                 />
@@ -1109,6 +1148,77 @@ export function ProspectingClient() {
                   {busy ? t("Aguarde…") : t("Importar planilha")}
                 </Button>
               </div>
+              {colunasDaLista && (
+                <fieldset className="space-y-2" data-testid="relacionar-colunas">
+                  <legend className="text-sm font-medium">{t("Relacionar colunas")}</legend>
+                  <p className="text-xs text-muted-foreground">
+                    {t(
+                      "Escolha o campo do contato que recebe cada coluna da planilha. Nome da empresa e Telefone são obrigatórios. Depois de mudar, confira de novo ou importe.",
+                    )}
+                  </p>
+                  {(() => {
+                    const destinos = colunasDaLista.map((c) => c.destino);
+                    const faltam = [
+                      !destinos.includes("name") && t("Nome da empresa"),
+                      !destinos.includes("phone") && t("Telefone"),
+                    ].filter(Boolean);
+                    return faltam.length > 0 ? (
+                      <p role="alert" className="text-xs text-destructive">
+                        {t("Falta relacionar:")} {faltam.join(", ")}
+                      </p>
+                    ) : null;
+                  })()}
+                  <ul className="space-y-2">
+                    {colunasDaLista.map((coluna, i) => (
+                      <li key={`${i}-${coluna.titulo}`} className="rounded-md border p-2">
+                        <label
+                          htmlFor={`prospecting-coluna-${i}`}
+                          className="block text-xs font-medium"
+                        >
+                          {coluna.titulo || `${t("Coluna")} ${i + 1}`}
+                          {coluna.exemplo && (
+                            <span className="ml-1 font-normal text-muted-foreground">
+                              ({t("ex.:")} {coluna.exemplo})
+                            </span>
+                          )}
+                        </label>
+                        <select
+                          id={`prospecting-coluna-${i}`}
+                          value={coluna.destino}
+                          onChange={(e) => {
+                            const destino = e.target.value as DestinoDaColuna;
+                            setColunasDaLista((atual) =>
+                              atual
+                                ? atual.map((c, j) => (j === i ? { ...c, destino } : c))
+                                : atual,
+                            );
+                            setPreviaDaLista(null);
+                          }}
+                          className="mt-1 block w-full rounded-md border bg-background px-2 py-1 text-sm"
+                        >
+                          <option value="ignorar">{t("Não importar")}</option>
+                          <optgroup label={t("Campos do contato")}>
+                            {CAMPOS_FIXOS_DA_PLANILHA.map((f) => (
+                              <option key={f.destino} value={f.destino}>
+                                {t(f.rotulo)}
+                              </option>
+                            ))}
+                          </optgroup>
+                          {personalizadosDaLista.length > 0 && (
+                            <optgroup label={t("Campos personalizados")}>
+                              {personalizadosDaLista.map((cp) => (
+                                <option key={cp.key} value={`cf:${cp.key}`}>
+                                  {cp.label}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+                        </select>
+                      </li>
+                    ))}
+                  </ul>
+                </fieldset>
+              )}
               {previaDaLista && (
                 <div role="status" className="rounded-md bg-muted/40 p-3 text-sm">
                   <p className="font-medium">

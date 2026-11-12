@@ -762,15 +762,38 @@ export async function criarPegadaDoCandidato(
   let contactId = contatoDaCampanha ?? p.contact_id;
   if (!contactId) {
     const linksDoNovo = linksParaContatoNovo(p);
-    const contact = await createContactHandler(admin, ctx, {
+    const base = {
       name: p.data.name,
       display_name: p.data.name,
       phone_number: p.phone,
       source: "prospecting",
       source_metadata: { campaign_id: c.id, place_id: p.data.key, maps_url: p.data.maps_url },
       consent: { legitimate_interest: { ref: config.legal_basis_ref } },
-      ...(linksDoNovo ? { custom_fields: linksDoNovo } : {}),
-    });
+    };
+    // Da planilha: campos personalizados do contato e o primeiro e-mail. São extras — se a
+    // ficha os recusar (e-mail de outro contato, valor fora do padrão do campo), o contato
+    // nasce sem eles e a abordagem segue, em vez de a empresa travar na fila.
+    const camposDaPlanilha = { ...(p.data.custom_fields ?? {}), ...(linksDoNovo ?? {}) };
+    const emailDaPlanilha = p.data.emails?.find((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+    const temExtras = !!emailDaPlanilha || Object.keys(p.data.custom_fields ?? {}).length > 0;
+    let contact: Awaited<ReturnType<typeof createContactHandler>>;
+    try {
+      contact = await createContactHandler(admin, ctx, {
+        ...base,
+        ...(emailDaPlanilha ? { email: emailDaPlanilha.toLowerCase() } : {}),
+        ...(Object.keys(camposDaPlanilha).length > 0 ? { custom_fields: camposDaPlanilha } : {}),
+      });
+    } catch (error) {
+      if (!temExtras) throw error;
+      logger.warn("[prospecting] ficha recusou os dados da planilha; o contato nasce sem eles", {
+        candidate_id: p.id,
+        error: error instanceof Error ? error.message.slice(0, 200) : String(error),
+      });
+      contact = await createContactHandler(admin, ctx, {
+        ...base,
+        ...(linksDoNovo ? { custom_fields: linksDoNovo } : {}),
+      });
+    }
     contactId = String(contact.contact.id);
     await db.query(
       "update prospecting_candidates set contact_id=$3 where organization_id=$1 and id=$2",

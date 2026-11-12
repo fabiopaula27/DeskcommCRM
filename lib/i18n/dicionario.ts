@@ -17912,6 +17912,14 @@ export const DICIONARIO: Traducoes = {
   "Na primeira mensagem (recomendado)": { es: "En el primer mensaje (recomendado)" },
   "A abertura já diz como parar:": { es: "La apertura ya dice cómo detenerse:" },
   "Atrasar para a 2ª mensagem": { es: "Postergar al 2.º mensaje" },
+  "Relacionar colunas": { es: "Relacionar columnas" },
+  "Escolha o campo do contato que recebe cada coluna da planilha. Nome da empresa e Telefone são obrigatórios. Depois de mudar, confira de novo ou importe.": {
+    es: "Elige el campo del contacto que recibe cada columna de la planilla. Nombre de la empresa y Teléfono son obligatorios. Después de cambiar, vuelve a revisar o importa.",
+  },
+  "Falta relacionar:": { es: "Falta relacionar:" },
+  "ex.:": { es: "ej.:" },
+  "Não importar": { es: "No importar" },
+  "Campos do contato": { es: "Campos del contacto" },
   "Não oferecer": { es: "No ofrecer" },
   "Nenhuma mensagem diz como parar. Mais gente tende a denunciar como spam, o que pode bloquear o número. Quem responder PARAR continua bloqueado.": {
     es: "Ningún mensaje dice cómo dejar de recibir. Más personas tienden a denunciar como spam, lo que puede bloquear el número. Quien responda BAJA sigue bloqueado.",

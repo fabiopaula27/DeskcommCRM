@@ -177,6 +177,8 @@ export const importarPlanilhaCamposSchema = z
     name: z.string().trim().min(2).max(120),
     niche: z.string().trim().min(2).max(120),
     origem_da_lista: z.string().trim().min(3).max(500),
+    // O destino de cada coluna, pela posição, em JSON (tela "Relacionar colunas").
+    mapa: z.string().max(20_000).optional(),
     avaliar_site: CAIXA_DO_FORMULARIO,
     gerar_previa: CAIXA_DO_FORMULARIO,
     // `previa` só CONFERE: devolve o que entra e o que fica de fora (com o motivo de cada
@@ -221,6 +223,8 @@ export interface Prospect {
   reviews: number | null;
   emails: string[];
   socials: string[];
+  /** Campos personalizados do CONTATO vindos da planilha (chave → valor), aplicados na criação. */
+  custom_fields?: Record<string, string>;
   /** Veredito do enriquecimento de site (spec 24). Ausente = pendente. */
   site?: SiteEnrichment | null;
   /**

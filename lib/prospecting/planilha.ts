@@ -22,6 +22,36 @@ export const PLANILHA_MAX_LINHAS = 500;
 
 type Campo = "name" | "phone" | "website" | "category" | "address" | "emails" | "socials";
 
+/**
+ * Para onde vai uma coluna da planilha: um campo fixo do contato, um campo personalizado
+ * do contato (`cf:<key>`, definido em Etapas do funil com escopo Contato) ou lugar nenhum.
+ */
+export type DestinoDaColuna = Campo | `cf:${string}` | "ignorar";
+
+/** Os campos fixos, na ordem e com o rótulo que a tela mostra. */
+export const CAMPOS_FIXOS_DA_PLANILHA: readonly { destino: Campo; rotulo: string }[] = [
+  { destino: "name", rotulo: "Nome da empresa" },
+  { destino: "phone", rotulo: "Telefone" },
+  { destino: "emails", rotulo: "E-mail" },
+  { destino: "website", rotulo: "Site" },
+  { destino: "category", rotulo: "Categoria" },
+  { destino: "address", rotulo: "Endereço" },
+  { destino: "socials", rotulo: "Redes sociais" },
+];
+
+/** O mínimo de um campo personalizado que a leitura precisa. */
+export interface CampoPersonalizadoDaPlanilha {
+  key: string;
+  label: string;
+}
+
+/** Uma coluna como a tela de relacionar mostra: título, um exemplo e o destino em vigor. */
+export interface ColunaDaPlanilha {
+  titulo: string;
+  exemplo: string;
+  destino: DestinoDaColuna;
+}
+
 /** Formas aceitas de cada coluna, sem acento e sem caixa (inclui espanhol). */
 const COLUNAS: Record<Campo, readonly string[]> = {
   name: ["empresa", "nome", "nome fantasia", "razao social", "negocio", "nombre"],
@@ -70,26 +100,86 @@ export type LeituraDaPlanilhaDeProspeccao =
       candidatos: CandidatoNaPlanilha[];
       erros: LinhaExcluida[];
       colunasIgnoradas: string[];
+      colunas: ColunaDaPlanilha[];
     }
-  | { erro: string };
+  | { erro: string; colunas?: ColunaDaPlanilha[] };
 
-export function lerPlanilhaDeProspeccao(sheet: SheetMatrix): LeituraDaPlanilhaDeProspeccao {
+/**
+ * O destino que a leitura sugere para um título: campo fixo pelos nomes aceitos; senão,
+ * campo personalizado cujo rótulo ou chave bata com o título (sem acento e sem caixa).
+ */
+export function sugerirDestino(
+  titulo: string,
+  personalizados: readonly CampoPersonalizadoDaPlanilha[] = [],
+): DestinoDaColuna {
+  const fixo = campoDaColuna(titulo);
+  if (fixo) return fixo;
+  const alvo = normalizarCabecalho(titulo);
+  if (!alvo) return "ignorar";
+  const achado = personalizados.find(
+    (c) =>
+      normalizarCabecalho(c.label) === alvo ||
+      normalizarCabecalho(c.key) === alvo.replace(/ /g, "_"),
+  );
+  return achado ? `cf:${achado.key}` : "ignorar";
+}
+
+export interface OpcoesDaLeitura {
+  /** O destino de cada coluna, pela posição. Ausente = sugestão automática. */
+  mapa?: readonly string[] | null;
+  /** Os campos personalizados do contato que a organização tem. */
+  personalizados?: readonly CampoPersonalizadoDaPlanilha[];
+}
+
+export function lerPlanilhaDeProspeccao(
+  sheet: SheetMatrix,
+  opcoes: OpcoesDaLeitura = {},
+): LeituraDaPlanilhaDeProspeccao {
   if (sheet.rows.length > PLANILHA_MAX_LINHAS) {
     // Importar "os primeiros 500" em silêncio deixaria o operador achar que a lista inteira entrou.
     return { erro: `Máximo de ${PLANILHA_MAX_LINHAS} linhas de dados.` };
   }
+  const personalizados = opcoes.personalizados ?? [];
+  const chavesValidas = new Set(personalizados.map((c) => c.key));
+  const fixosValidos = new Set<string>(CAMPOS_FIXOS_DA_PLANILHA.map((c) => c.destino));
+  const destinoValido = (d: string | undefined): DestinoDaColuna | null => {
+    if (!d) return null;
+    if (d === "ignorar" || fixosValidos.has(d)) return d as DestinoDaColuna;
+    if (d.startsWith("cf:") && chavesValidas.has(d.slice(3))) return d as DestinoDaColuna;
+    return null;
+  };
+
+  const primeiraLinha = sheet.rows.find((r) => r.some((c) => c.trim() !== "")) ?? [];
+  const mapa = opcoes.mapa ?? null;
+  const colunasDaTela: ColunaDaPlanilha[] = sheet.headers.map((titulo, i) => ({
+    titulo: titulo.trim(),
+    exemplo: (primeiraLinha[i] ?? "").trim().slice(0, 80),
+    destino: mapa ? (destinoValido(mapa[i]) ?? "ignorar") : sugerirDestino(titulo, personalizados),
+  }));
 
   const colunas = new Map<Campo, number[]>();
+  const personalizadasNaPlanilha = new Map<string, number>();
   const colunasIgnoradas: string[] = [];
-  sheet.headers.forEach((titulo, i) => {
-    const campo = campoDaColuna(titulo);
+  colunasDaTela.forEach(({ titulo, destino }, i) => {
+    if (destino.startsWith("cf:")) {
+      const chave = destino.slice(3);
+      if (!personalizadasNaPlanilha.has(chave)) personalizadasNaPlanilha.set(chave, i);
+      return;
+    }
+    const campo = destino === "ignorar" ? null : (destino as Campo);
     if (campo && (MULTIPLAS.has(campo) || !colunas.has(campo))) {
       colunas.set(campo, [...(colunas.get(campo) ?? []), i]);
-    } else if (titulo.trim() !== "") {
-      colunasIgnoradas.push(titulo.trim());
+    } else if (titulo !== "") {
+      colunasIgnoradas.push(titulo);
     }
   });
 
+  if (mapa && (!colunas.has("name") || !colunas.has("phone"))) {
+    return {
+      erro: 'Relacione uma coluna a "Nome da empresa" e outra a "Telefone" para importar.',
+      colunas: colunasDaTela,
+    };
+  }
   if (!colunas.has("name") || !colunas.has("phone")) {
     const encontradas = sheet.headers.map((h) => h.trim()).filter(Boolean);
     return {
@@ -98,6 +188,7 @@ export function lerPlanilhaDeProspeccao(sheet: SheetMatrix): LeituraDaPlanilhaDe
         `Encontrei: ${encontradas.join(", ") || "nenhuma coluna"}. ` +
         `Nomes aceitos para a empresa: ${COLUNAS.name.join(", ")}. ` +
         `Nomes aceitos para o telefone: ${COLUNAS.phone.join(", ")}.`,
+      colunas: colunasDaTela,
     };
   }
 
@@ -174,9 +265,23 @@ export function lerPlanilhaDeProspeccao(sheet: SheetMatrix): LeituraDaPlanilhaDe
         reviews: null,
         emails,
         socials,
+        ...camposPersonalizadosDaLinha(bruto, personalizadasNaPlanilha),
       },
     });
   });
 
-  return { candidatos, erros, colunasIgnoradas };
+  return { candidatos, erros, colunasIgnoradas, colunas: colunasDaTela };
+}
+
+/** Os valores dos campos personalizados de uma linha; nada quando todos vêm vazios. */
+function camposPersonalizadosDaLinha(
+  linha: string[],
+  colunas: ReadonlyMap<string, number>,
+): { custom_fields?: Record<string, string> } {
+  const campos: Record<string, string> = {};
+  for (const [chave, i] of colunas) {
+    const valor = (linha[i] ?? "").trim().slice(0, 1000);
+    if (valor) campos[chave] = valor;
+  }
+  return Object.keys(campos).length > 0 ? { custom_fields: campos } : {};
 }

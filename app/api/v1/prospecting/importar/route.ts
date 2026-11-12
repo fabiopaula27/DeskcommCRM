@@ -14,8 +14,33 @@ import {
 import { ProspectingError } from "@/lib/prospecting/provider";
 import { importarPlanilhaCamposSchema } from "@/lib/prospecting/schema";
 import type { PreviaDaImportacao } from "@/lib/prospecting/importacao-previa";
-import { lerPlanilhaDeProspeccao, PLANILHA_MAX_LINHAS } from "@/lib/prospecting/planilha";
+import {
+  lerPlanilhaDeProspeccao,
+  PLANILHA_MAX_LINHAS,
+  type CampoPersonalizadoDaPlanilha,
+} from "@/lib/prospecting/planilha";
+import { camposDoFunil, camposPorEscopo } from "@/lib/leads/campos-do-funil";
 import { importarPlanilha, previaDaPlanilha } from "@/lib/prospecting/store";
+
+/** Os campos personalizados de escopo Contato da organização, sem chave repetida. */
+async function camposDoContatoDaOrg(
+  pool: ReturnType<typeof getRequestPool>,
+  org: string,
+): Promise<CampoPersonalizadoDaPlanilha[]> {
+  try {
+    const { rows } = await pool.query<{ settings: Record<string, unknown> | null }>(
+      "select settings from crm_pipelines where organization_id=$1 and is_archived=false order by is_default desc, position",
+      [org],
+    );
+    const vistos = new Map<string, CampoPersonalizadoDaPlanilha>();
+    for (const r of rows)
+      for (const c of camposPorEscopo(camposDoFunil(r.settings), "contato"))
+        if (!vistos.has(c.key)) vistos.set(c.key, { key: c.key, label: c.label });
+    return [...vistos.values()];
+  } catch {
+    return [];
+  }
+}
 
 export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "no-store" };
@@ -99,15 +124,38 @@ export async function POST(req: NextRequest) {
     maxLinhas: PLANILHA_MAX_LINHAS,
   });
   if (!lido.ok) return fail("validation_failed", lido.error, 422, { requestId, headers });
-  const planilha = lerPlanilhaDeProspeccao(lido.sheet);
+  const pool = getRequestPool();
+  // Os campos personalizados do CONTATO, de todos os funis da organização (o contato não tem
+  // funil próprio — a mesma régua do `createContactHandler`). Falha de leitura = lista vazia:
+  // a importação segue só com os campos fixos.
+  const personalizados = await camposDoContatoDaOrg(pool, org);
+  let mapa: string[] | null = null;
+  if (campos.data.mapa) {
+    try {
+      const bruto: unknown = JSON.parse(campos.data.mapa);
+      if (Array.isArray(bruto) && bruto.every((d) => typeof d === "string")) mapa = bruto;
+    } catch {
+      mapa = null;
+    }
+    if (!mapa)
+      return fail("validation_failed", "Relação de colunas inválida. Confira de novo.", 422, {
+        requestId,
+        headers,
+      });
+  }
+  const planilha = lerPlanilhaDeProspeccao(lido.sheet, { mapa, personalizados });
   if ("erro" in planilha)
-    return fail("validation_failed", planilha.erro, 422, { requestId, headers });
+    return fail("validation_failed", planilha.erro, 422, {
+      requestId,
+      headers,
+      details: { colunas: planilha.colunas ?? [], campos_personalizados: personalizados },
+    });
   // A CLASSIFICAÇÃO ACONTECE ANTES DE QUALQUER ESCRITA. Aqui, e de novo dentro do lock da
   // importação: entre a prévia e o clique em "Importar" o telefone pode ter virado contato ou
   // o titular pode ter pedido a exclusão. Quem responde as duas perguntas é a mesma função
   // (`previaDaPlanilha`), então a prévia não pode prometer um número que a escrita não cumpre.
-  const pool = getRequestPool();
-  const { request_id, previa: somentePrevia, ...resto } = campos.data;
+  const { request_id, previa: somentePrevia, mapa: _mapa, ...resto } = campos.data;
+  void _mapa;
   let previa: PreviaDaImportacao;
   try {
     previa = await previaDaPlanilha(pool, org, planilha);
@@ -132,6 +180,8 @@ export async function POST(req: NextRequest) {
         total_linhas: previa.total_linhas,
         resumo: previa.resumo,
         colunas_ignoradas: planilha.colunasIgnoradas,
+        colunas: planilha.colunas,
+        campos_personalizados: personalizados,
       },
       { requestId, headers },
     );
