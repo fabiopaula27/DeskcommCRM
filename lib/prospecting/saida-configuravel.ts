@@ -22,6 +22,8 @@ export interface ContagemSaida {
   /** Só preenchido quando ESTE envio reservou (levaASaida === true). */
   reservadaEm: string | null;
   locale: string | null;
+  /** Texto próprio da saída na campanha (`config.exit_text`); null usa o padrão. */
+  textoSaida: string | null;
   /** Número automático desta mensagem para o candidato (após o incremento). */
   numeroDaMensagem: number;
 }
@@ -33,6 +35,7 @@ interface LinhaContagem {
   leva_a_saida: boolean;
   numero_da_mensagem: number;
   locale: string | null;
+  texto_saida: string | null;
   reservada_em_texto: string | null;
 }
 
@@ -67,7 +70,8 @@ export const SQL_CONTAR_ENVIO_AUTOMATICO = `
               (antes.exit_offered_at is null and p.exit_offered_at is not null) as leva_a_saida,
               p.automatic_sends as numero_da_mensagem,
               (select o.locale from public.organizations o where o.id = $1) as locale,
-              p.exit_offered_at::text as reservada_em_texto
+              p.exit_offered_at::text as reservada_em_texto,
+              c.config->>'exit_text' as texto_saida
 `;
 
 /** Texto do `update` que desfaz a contagem e a reserva de um envio falhado. Params: ($1 = organization_id, $2 = candidato_id, $3 = reservadaEm). */
@@ -117,7 +121,12 @@ export const SQL_AMARRAR_RESERVA_A_MENSAGEM = `
  * reprocesso da MESMA mensagem. Params: ($1 = organization_id, $2 = job_id, $3 = seq).
  */
 export const SQL_MENSAGEM_GUARDADA = `
-    select m.body, o.locale
+    select m.body, o.locale,
+           (select c.config->>'exit_text'
+              from public.prospecting_candidates p
+              join public.prospecting_campaigns c on c.organization_id = p.organization_id and c.id = p.campaign_id
+             where p.organization_id = l.organization_id and p.conversation_id = m.conversation_id
+             limit 1) as texto_saida
       from public.send_ledger l
       join public.organizations o on o.id = l.organization_id
       left join public.messages m on m.organization_id = l.organization_id and m.id = l.crm_message_id
@@ -148,6 +157,7 @@ export async function contarEnvioAutomatico(
     // (com microssegundos) para que a comparação exata no desfazer não falhe.
     reservadaEm: linha.leva_a_saida ? linha.reservada_em_texto ?? null : null,
     locale: linha.locale ?? null,
+    textoSaida: linha.texto_saida ?? null,
     numeroDaMensagem: linha.numero_da_mensagem,
   };
 }
@@ -197,7 +207,7 @@ export async function enviarComSaidaConfiguravel(
   let r: ContagemSaida | null = null;
   if (conversationId) {
     try {
-      const { rows: guardada } = await db.query<{ body: string | null; locale: string | null }>(
+      const { rows: guardada } = await db.query<{ body: string | null; locale: string | null; texto_saida: string | null }>(
         SQL_MENSAGEM_GUARDADA,
         [organizationId, mensagem.jobId, mensagem.seq],
       );
@@ -209,11 +219,11 @@ export async function enviarComSaidaConfiguravel(
         // ele tem de dizer o mesmo que a tela e a contagem já dizem.
         // ponytail: a decisão vem da 1ª mensagem física; numa resposta fatiada
         // em bolhas o rodapé mora na última, e o reprocesso sai sem ele.
-        const { body, locale } = guardada[0];
-        if (body !== null && temSaida(body, locale)) corpo = comSaida(corpo, locale);
+        const { body, locale, texto_saida } = guardada[0];
+        if (body !== null && temSaida(body, locale, texto_saida)) corpo = comSaida(corpo, locale, texto_saida);
       } else {
         r = await contarEnvioAutomatico(db, organizationId, conversationId);
-        if (r?.levaASaida) corpo = comSaida(corpo, r.locale);
+        if (r?.levaASaida) corpo = comSaida(corpo, r.locale, r.textoSaida);
       }
     } catch (erroContagem) {
       opcoes.avisar("contagem de saída automática falhou; segue sem a saída", {
@@ -262,7 +272,7 @@ export async function enviarComSaidaConfiguravel(
           organizationId,
           mensagem.jobId,
           mensagem.seq,
-          rodapeDeSaida(r.locale),
+          rodapeDeSaida(r.locale, r.textoSaida),
           r.candidatoId,
           r.reservadaEm,
         ])

@@ -102,12 +102,12 @@ export async function gerarPreviaDoCandidato(
       blocoVozVendedor(personalizacao) || undefined,
       estrategia,
       // A mesma regra do envio: a prévia é byte a byte o que o tick mandaria.
-      cfg.data.exit_offer !== "first_message",
+      cfg.data.exit_offer === "second_message",
     ),
     origem: "Pesquisa de empresas",
     origemDaAbordagem: "prospeccao_fria",
     // Modo "saída na 2ª": sem Auditoria/Detalhe, como no envio (worker.ts).
-    dados: montarDadosDeAbordagem(linha.data, cfg.data.exit_offer !== "first_message" ? null : site),
+    dados: montarDadosDeAbordagem(linha.data, cfg.data.exit_offer === "second_message" ? null : site),
   });
   if (!gerado.ok) return { ok: false, motivo: "ia_falhou", detalhe: gerado.reason };
 

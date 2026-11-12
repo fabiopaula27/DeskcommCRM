@@ -78,8 +78,17 @@ export function palavraDeSaida(locale?: string | null): string {
   return palavra;
 }
 
-/** O rodapé pronto, sem quebra de linha inicial. */
-export function rodapeDeSaida(locale?: string | null): string {
+/**
+ * O rodapé pronto, sem quebra de linha inicial.
+ *
+ * `personalizado` é o texto que o operador escreveu na campanha (`exit_text`). Quando
+ * existe, ele substitui a frase padrão — e a responsabilidade de a pessoa conseguir
+ * sair passa a ser de quem escreveu: a palavra isolada (PARAR, SAIR...) continua
+ * bloqueando na ingestão, mas um "é só me avisar" depende de alguém ler a resposta.
+ */
+export function rodapeDeSaida(locale?: string | null, personalizado?: string | null): string {
+  const proprio = personalizado?.trim();
+  if (proprio) return proprio;
   const idioma = raiz(locale);
   const monta = TEXTO_POR_IDIOMA[idioma] ?? TEXTO_POR_IDIOMA.pt!;
   return monta(palavraDeSaida(locale));
@@ -93,13 +102,13 @@ export function rodapeDeSaida(locale?: string | null): string {
  * a mesma frase duas vezes na primeira mensagem parece defeito e custa a
  * primeira impressão.
  */
-export function comSaida(texto: string, locale?: string | null): string {
+export function comSaida(texto: string, locale?: string | null, personalizado?: string | null): string {
   const corpo = texto.trimEnd();
-  if (temSaida(corpo, locale)) return corpo;
-  return `${corpo}\n\n${rodapeDeSaida(locale)}`;
+  if (temSaida(corpo, locale, personalizado)) return corpo;
+  return `${corpo}\n\n${rodapeDeSaida(locale, personalizado)}`;
 }
 
 /** O texto já termina com o rodapé deste idioma (o mesmo critério do `comSaida`). */
-export function temSaida(texto: string, locale?: string | null): boolean {
-  return texto.trimEnd().toLowerCase().endsWith(rodapeDeSaida(locale).toLowerCase());
+export function temSaida(texto: string, locale?: string | null, personalizado?: string | null): boolean {
+  return texto.trimEnd().toLowerCase().endsWith(rodapeDeSaida(locale, personalizado).toLowerCase());
 }

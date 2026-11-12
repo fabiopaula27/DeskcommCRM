@@ -17912,6 +17912,14 @@ export const DICIONARIO: Traducoes = {
   "Na primeira mensagem (recomendado)": { es: "En el primer mensaje (recomendado)" },
   "A abertura já diz como parar:": { es: "La apertura ya dice cómo detenerse:" },
   "Atrasar para a 2ª mensagem": { es: "Postergar al 2.º mensaje" },
+  "Não oferecer": { es: "No ofrecer" },
+  "Nenhuma mensagem diz como parar. Mais gente tende a denunciar como spam, o que pode bloquear o número. Quem responder PARAR continua bloqueado.": {
+    es: "Ningún mensaje dice cómo dejar de recibir. Más personas tienden a denunciar como spam, lo que puede bloquear el número. Quien responda BAJA sigue bloqueado.",
+  },
+  "Texto da saída": { es: "Texto de salida" },
+  'Vazio usa a frase padrão. Só uma resposta de uma palavra (PARAR, SAIR) bloqueia sozinha; frases como "é só me avisar" dependem de alguém ler a resposta.': {
+    es: 'Vacío usa la frase estándar. Solo una respuesta de una palabra (BAJA, PARAR) bloquea sola; frases como "solo avísame" dependen de que alguien lea la respuesta.',
+  },
   "A abertura só cumprimenta e confirma se é a empresa certa, sem oferta. A instrução para parar vai na mensagem seguinte.": {
     es: "La apertura solo saluda y confirma si es la empresa correcta, sin oferta. La instrucción para detenerse va en el mensaje siguiente.",
   },

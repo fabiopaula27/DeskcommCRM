@@ -338,7 +338,7 @@ export async function sendNextCandidate(
     // Modo "saída na 2ª": a 1ª mensagem só cumprimenta, então nada de ângulo de
     // venda — nem estratégia (na instrução) nem Auditoria/Detalhe/Rascunho (nos
     // dados), que o prompt frio deixa citar "como o motivo do contato".
-    const soCumprimenta = cfg.exit_offer !== "first_message";
+    const soCumprimenta = cfg.exit_offer === "second_message";
     const generated = await gerarAbordagemDeFormulario(pool, llmEdgeConfigFromEnv(env), {
       tenantId: c.organization_id,
       agentId: cfg.agent_id,
@@ -415,7 +415,7 @@ export async function sendNextCandidate(
     // (é o `context.ts` que manda o agente só cumprimentar na primeira). Pôr o
     // rodapé aqui incondicionalmente ofereceria a saída DUAS vezes — e na
     // mensagem que o operador não escolheu.
-    if (cfg.exit_offer === "first_message") baloes[0] = comSaida(baloes[0]!, locale);
+    if (cfg.exit_offer === "first_message") baloes[0] = comSaida(baloes[0]!, locale, cfg.exit_text);
     let mensagem: Message | undefined;
     let falhouEm: Message | undefined;
     /** A conversa deixou de ser fria ENTRE bolhas: a pessoa respondeu ou um humano assumiu. */

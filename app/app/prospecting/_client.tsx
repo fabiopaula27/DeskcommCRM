@@ -1730,6 +1730,40 @@ export function ProspectingClient() {
                                 </span>
                               </span>
                             </label>
+                            <label className="flex items-start gap-2 text-sm">
+                              <input
+                                type="radio"
+                                name="prospecting-exit-offer"
+                                checked={config.exit_offer === "none"}
+                                onChange={() => update("exit_offer", "none")}
+                                className="mt-1"
+                              />
+                              <span>
+                                {t("Não oferecer")}
+                                <span className="block text-xs text-muted-foreground">
+                                  {t(
+                                    "Nenhuma mensagem diz como parar. Mais gente tende a denunciar como spam, o que pode bloquear o número. Quem responder PARAR continua bloqueado.",
+                                  )}
+                                </span>
+                              </span>
+                            </label>
+                            {config.exit_offer !== "none" && (
+                              <div className="space-y-1">
+                                <Label htmlFor="prospecting-exit-text">{t("Texto da saída")}</Label>
+                                <Input
+                                  id="prospecting-exit-text"
+                                  maxLength={300}
+                                  value={config.exit_text ?? ""}
+                                  placeholder={rodapeDeSaida(data?.organization_locale)}
+                                  onChange={(e) => update("exit_text", e.target.value)}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                  {t(
+                                    "Vazio usa a frase padrão. Só uma resposta de uma palavra (PARAR, SAIR) bloqueia sozinha; frases como \"é só me avisar\" dependem de alguém ler a resposta.",
+                                  )}
+                                </p>
+                              </div>
+                            )}
                             {config.exit_offer === "second_message" && (
                               <p className="mt-1 text-xs text-muted-foreground">
                                 {t(

@@ -47,7 +47,12 @@ export const campaignConfigSchema = z
     // TODOS os modos a palavra continua bloqueando (lib/channels/pos-entrada.ts).
     // O padrão é `first_message`: configuração gravada antes desta chave existir segue
     // igual, sem ninguém editar nada.
-    exit_offer: z.enum(["first_message", "second_message"]).default("first_message"),
+    // `none`: a campanha não oferece saída nenhuma — escolha explícita do operador, por
+    // conta e risco dele (denúncia de spam e base legal). A palavra isolada continua
+    // bloqueando na ingestão, como em todos os modos.
+    exit_offer: z.enum(["first_message", "second_message", "none"]).default("first_message"),
+    // Texto próprio da saída; vazio usa a frase padrão do idioma (`rodape-de-saida.ts`).
+    exit_text: z.string().trim().max(300).optional(),
   })
   .strict();
 export const searchSchema = z
