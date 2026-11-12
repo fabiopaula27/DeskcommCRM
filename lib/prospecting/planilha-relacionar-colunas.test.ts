@@ -44,6 +44,16 @@ describe("relacionar colunas da planilha", () => {
     expect(p?.custom_fields).toEqual({ qtd_lojas: "3" });
   });
 
+  it("coluna TAGS: reconhecida sozinha e dividida por vírgula ou ponto e vírgula", () => {
+    const r = lerPlanilhaDeProspeccao({
+      headers: ["NOME", "Telefone", "TAGS"],
+      rows: [["Josmir", "16996962600", "Lead-vidracaria, Batatais; quente"]],
+    });
+    if ("erro" in r) throw new Error(r.erro);
+    expect(r.colunas.map((c) => c.destino)).toEqual(["name", "phone", "tags"]);
+    expect(r.candidatos[0]?.prospect.tags).toEqual(["Lead-vidracaria", "Batatais", "quente"]);
+  });
+
   it("com mapa sem telefone: recusa e devolve as colunas para a tela corrigir", () => {
     const r = lerPlanilhaDeProspeccao(
       { headers: ["Empresa", "Telefone"], rows: [["X", "16996962600"]] },

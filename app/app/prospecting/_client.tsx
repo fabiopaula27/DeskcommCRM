@@ -1153,13 +1153,13 @@ export function ProspectingClient() {
                   <legend className="text-sm font-medium">{t("Relacionar colunas")}</legend>
                   <p className="text-xs text-muted-foreground">
                     {t(
-                      "Escolha o campo do contato que recebe cada coluna da planilha. Nome da empresa e Telefone são obrigatórios. Depois de mudar, confira de novo ou importe.",
+                      "Escolha o campo do contato que recebe cada coluna da planilha. Nome e Telefone são obrigatórios. Depois de mudar, confira de novo ou importe.",
                     )}
                   </p>
                   {(() => {
                     const destinos = colunasDaLista.map((c) => c.destino);
                     const faltam = [
-                      !destinos.includes("name") && t("Nome da empresa"),
+                      !destinos.includes("name") && t("Nome"),
                       !destinos.includes("phone") && t("Telefone"),
                     ].filter(Boolean);
                     return faltam.length > 0 ? (

@@ -1,3 +1,4 @@
+import { normalizarTags } from "@/lib/contacts/tag-normalizada";
 import type pg from "pg";
 import { ZodError } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -775,11 +776,16 @@ export async function criarPegadaDoCandidato(
     // nasce sem eles e a abordagem segue, em vez de a empresa travar na fila.
     const camposDaPlanilha = { ...(p.data.custom_fields ?? {}), ...(linksDoNovo ?? {}) };
     const emailDaPlanilha = p.data.emails?.find((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
-    const temExtras = !!emailDaPlanilha || Object.keys(p.data.custom_fields ?? {}).length > 0;
+    const tagsDaPlanilha = normalizarTags(p.data.tags ?? []);
+    const temExtras =
+      !!emailDaPlanilha ||
+      tagsDaPlanilha.length > 0 ||
+      Object.keys(p.data.custom_fields ?? {}).length > 0;
     let contact: Awaited<ReturnType<typeof createContactHandler>>;
     try {
       contact = await createContactHandler(admin, ctx, {
         ...base,
+        ...(tagsDaPlanilha.length > 0 ? { tags: tagsDaPlanilha } : {}),
         ...(emailDaPlanilha ? { email: emailDaPlanilha.toLowerCase() } : {}),
         ...(Object.keys(camposDaPlanilha).length > 0 ? { custom_fields: camposDaPlanilha } : {}),
       });

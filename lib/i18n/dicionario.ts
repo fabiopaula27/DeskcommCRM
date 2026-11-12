@@ -17913,8 +17913,8 @@ export const DICIONARIO: Traducoes = {
   "A abertura já diz como parar:": { es: "La apertura ya dice cómo detenerse:" },
   "Atrasar para a 2ª mensagem": { es: "Postergar al 2.º mensaje" },
   "Relacionar colunas": { es: "Relacionar columnas" },
-  "Escolha o campo do contato que recebe cada coluna da planilha. Nome da empresa e Telefone são obrigatórios. Depois de mudar, confira de novo ou importe.": {
-    es: "Elige el campo del contacto que recibe cada columna de la planilla. Nombre de la empresa y Teléfono son obligatorios. Después de cambiar, vuelve a revisar o importa.",
+  "Escolha o campo do contato que recebe cada coluna da planilha. Nome e Telefone são obrigatórios. Depois de mudar, confira de novo ou importe.": {
+    es: "Elige el campo del contacto que recibe cada columna de la planilla. Nombre y Teléfono son obligatorios. Después de cambiar, vuelve a revisar o importa.",
   },
   "Falta relacionar:": { es: "Falta relacionar:" },
   "ex.:": { es: "ej.:" },

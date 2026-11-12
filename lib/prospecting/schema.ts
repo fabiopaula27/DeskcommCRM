@@ -225,6 +225,8 @@ export interface Prospect {
   socials: string[];
   /** Campos personalizados do CONTATO vindos da planilha (chave → valor), aplicados na criação. */
   custom_fields?: Record<string, string>;
+  /** Tags do CONTATO vindas da planilha, aplicadas na criação. */
+  tags?: string[];
   /** Veredito do enriquecimento de site (spec 24). Ausente = pendente. */
   site?: SiteEnrichment | null;
   /**

@@ -20,7 +20,7 @@ import { normalizeProspectPhone, safePublicLink } from "@/lib/prospecting/schema
 /** Dez dias de fila no teto de 50 por dia; a tela de candidatos já lista até 5.000. */
 export const PLANILHA_MAX_LINHAS = 500;
 
-type Campo = "name" | "phone" | "website" | "category" | "address" | "emails" | "socials";
+type Campo = "name" | "phone" | "website" | "category" | "address" | "emails" | "socials" | "tags";
 
 /**
  * Para onde vai uma coluna da planilha: um campo fixo do contato, um campo personalizado
@@ -30,13 +30,14 @@ export type DestinoDaColuna = Campo | `cf:${string}` | "ignorar";
 
 /** Os campos fixos, na ordem e com o rótulo que a tela mostra. */
 export const CAMPOS_FIXOS_DA_PLANILHA: readonly { destino: Campo; rotulo: string }[] = [
-  { destino: "name", rotulo: "Nome da empresa" },
+  { destino: "name", rotulo: "Nome" },
   { destino: "phone", rotulo: "Telefone" },
   { destino: "emails", rotulo: "E-mail" },
   { destino: "website", rotulo: "Site" },
   { destino: "category", rotulo: "Categoria" },
   { destino: "address", rotulo: "Endereço" },
   { destino: "socials", rotulo: "Redes sociais" },
+  { destino: "tags", rotulo: "Tags" },
 ];
 
 /** O mínimo de um campo personalizado que a leitura precisa. */
@@ -61,10 +62,11 @@ const COLUNAS: Record<Campo, readonly string[]> = {
   address: ["endereco", "cidade", "local", "direccion"],
   emails: ["email", "e-mail", "correo"],
   socials: ["instagram", "facebook", "linkedin", "redes"],
+  tags: ["tags", "tag", "etiquetas", "etiqueta"],
 };
 
 /** Campos que aceitam mais de uma coluna (nos demais vale só a primeira). */
-const MULTIPLAS: ReadonlySet<Campo> = new Set<Campo>(["address", "emails", "socials"]);
+const MULTIPLAS: ReadonlySet<Campo> = new Set<Campo>(["address", "emails", "socials", "tags"]);
 
 function normalizarCabecalho(texto: string): string {
   return texto
@@ -176,7 +178,7 @@ export function lerPlanilhaDeProspeccao(
 
   if (mapa && (!colunas.has("name") || !colunas.has("phone"))) {
     return {
-      erro: 'Relacione uma coluna a "Nome da empresa" e outra a "Telefone" para importar.',
+      erro: 'Relacione uma coluna a "Nome" e outra a "Telefone" para importar.',
       colunas: colunasDaTela,
     };
   }
@@ -249,6 +251,14 @@ export function lerPlanilhaDeProspeccao(
           .filter((v): v is string => !!v && v.length < 500),
       ),
     ].slice(0, 15);
+    const tags = [
+      ...new Set(
+        valores(bruto, "tags")
+          .flatMap((v) => v.split(/[,;]+/))
+          .map((v) => v.trim().slice(0, 60))
+          .filter(Boolean),
+      ),
+    ].slice(0, 20);
 
     candidatos.push({
       linha,
@@ -265,6 +275,7 @@ export function lerPlanilhaDeProspeccao(
         reviews: null,
         emails,
         socials,
+        ...(tags.length > 0 ? { tags } : {}),
         ...camposPersonalizadosDaLinha(bruto, personalizadasNaPlanilha),
       },
     });
