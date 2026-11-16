@@ -1543,3 +1543,35 @@
 @media (prefers-reduced-motion: reduce) {
   .cc-ondas-ativa .cc-onda { animation: none; }
 }
+
+/* ---- Barra lateral com cores próprias (tema de extensão) ----------------
+ * Um tema pode declarar `--color-sidebar-*` (ver `CHAVES_DE_TOKEN_DO_TEMA`).
+ * Sem nenhum declarado, a barra usa exatamente as cores da página, como antes.
+ *
+ * Os apelidos `--pagina-*` são calculados no <body> — onde o tema da
+ * organização (`body:has([data-tema-extensao])`) e o da instalação (`:root`)
+ * já chegaram —, e só então a barra troca os tokens da página pelos dela.
+ * Sem o apelido, `--color-surface: var(--color-sidebar-bg, var(--color-surface))`
+ * seria uma referência circular e o valor inteiro cairia.
+ */
+body {
+  --pagina-bg: var(--color-bg);
+  --pagina-surface: var(--color-surface);
+  --pagina-text: var(--color-text);
+  --pagina-text-muted: var(--color-text-muted);
+  --pagina-text-subtle: var(--color-text-subtle);
+  --pagina-border: var(--color-border);
+  --pagina-accent: var(--color-accent);
+  --pagina-accent-fg: var(--color-accent-fg);
+}
+.barra-lateral {
+  --color-bg: var(--color-sidebar-bg, var(--pagina-bg));
+  --color-surface: var(--color-sidebar-bg, var(--pagina-surface));
+  --color-text: var(--color-sidebar-text, var(--pagina-text));
+  --color-text-muted: var(--color-sidebar-text-muted, var(--pagina-text-muted));
+  --color-text-subtle: var(--color-sidebar-text-muted, var(--pagina-text-subtle));
+  --color-border: var(--color-sidebar-border, var(--pagina-border));
+  --color-accent: var(--color-sidebar-active-bg, var(--pagina-accent));
+  --color-accent-fg: var(--color-sidebar-active-fg, var(--pagina-accent-fg));
+  color: var(--color-text);
+}

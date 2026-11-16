@@ -6,9 +6,10 @@ import { describe, expect, it } from "vitest";
 import { isPublicPath } from "@/lib/auth/public-paths";
 import { checkCompatibility, parseCatalog, parseManifest } from "@/lib/extensions/manifest";
 
-const PACOTE = "extensoes/pacotes/solutcrm/tema-violeta-1.0.0.json";
+for (const versao of ["1.0.0", "1.1.0"]) {
+const PACOTE = `extensoes/pacotes/solutcrm/tema-violeta-${versao}.json`;
 
-describe("tema violeta SOLUTCRM", () => {
+describe(`tema violeta SOLUTCRM ${versao}`, () => {
   const bytes = new Uint8Array(readFileSync(PACOTE));
   const sha = createHash("sha256").update(bytes).digest("hex");
 
@@ -24,7 +25,7 @@ describe("tema violeta SOLUTCRM", () => {
 
   it("o catálogo da instalação aponta o mesmo digest e tamanho", () => {
     const cat = parseCatalog(new Uint8Array(readFileSync("extensoes/catalogo-solutcrm.json")));
-    const e = cat.entries.find((x) => x.name === "tema-violeta");
+    const e = cat.entries.find((x) => x.name === "tema-violeta" && x.version === versao);
     expect(e?.sha256).toBe(sha);
     expect(e?.byte_length).toBe(bytes.byteLength);
   });
@@ -34,3 +35,4 @@ describe("tema violeta SOLUTCRM", () => {
     expect(isPublicPath("/packages/outro.json")).toBe(false);
   });
 });
+}

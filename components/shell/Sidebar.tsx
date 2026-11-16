@@ -562,6 +562,8 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
         // `duration-base` em vez do `duration-200` literal: 200ms é o mesmo
         // número, mas vindo de `--duration-base`. A Lei de movimento fecha a
         // tabela de durações, e número solto é o que a faz apodrecer.
+        // `barra-lateral`: as cores próprias da barra que um tema pode declarar (globals.css).
+        "barra-lateral",
         "sticky top-[var(--faixas-de-cima,0px)] z-30 flex h-[calc(100dvh-var(--faixas-de-cima,0px))] shrink-0 flex-col border-r bg-card transition-[width] duration-base",
         collapsed ? "w-16" : "w-60",
       )}

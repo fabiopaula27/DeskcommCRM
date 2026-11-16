@@ -1,0 +1,93 @@
+{
+  "format_version": 1,
+  "profile": "declarative",
+  "publisher": "solutcrm",
+  "name": "tema-violeta",
+  "version": "1.1.0",
+  "license": "MIT",
+  "host_api": {
+    "min": 2,
+    "max": 2
+  },
+  "permissions": [
+    "theme.apply"
+  ],
+  "dependencies": [],
+  "data": {
+    "mode": "none"
+  },
+  "display": {
+    "title": {
+      "pt-BR": "Tema Violeta SOLUTCRM",
+      "es": "Tema Violeta SOLUTCRM"
+    },
+    "summary": {
+      "pt-BR": "Lateral azul-noite com item ativo em violeta, fundo claro levemente azulado, cartões brancos e textos azul-marinho. Com versão escura.",
+      "es": "Lateral azul noche con ítem activo en violeta, fondo claro azulado, tarjetas blancas y textos azul marino. Con versión oscura."
+    },
+    "category": "productivity",
+    "icon": "Lightbulb"
+  },
+  "configuration": {
+    "density": "comfortable",
+    "show_description": true,
+    "theme": "plum"
+  },
+  "contributions": {
+    "crm_cards": [],
+    "theme": {
+      "palette": "plum",
+      "claro": {
+        "--color-bg": "#f4f5fb",
+        "--color-surface": "#ffffff",
+        "--color-surface-elevated": "#f6f4ff",
+        "--color-text": "#14163a",
+        "--color-text-muted": "#5b5f7e",
+        "--color-text-subtle": "#80849f",
+        "--color-border": "#e6e7f1",
+        "--color-border-strong": "#d0d2e4",
+        "--color-accent-50": "#f4f1ff",
+        "--color-accent-100": "#ebe5ff",
+        "--color-accent-200": "#d8ccff",
+        "--color-accent-300": "#bba6ff",
+        "--color-accent-400": "#9a78ff",
+        "--color-accent-500": "#7c4dff",
+        "--color-accent-600": "#6a3df0",
+        "--color-accent-700": "#5a2fd6",
+        "--color-accent-800": "#4a27ad",
+        "--color-accent-900": "#3d2389",
+        "--color-accent-950": "#241252",
+        "--color-accent": "var(--color-accent-600)",
+        "--color-accent-fg": "#ffffff",
+        "--color-accent-soft": "var(--color-accent-100)",
+        "--color-accent-hover": "var(--color-accent-700)",
+        "--color-sidebar-bg": "#141631",
+        "--color-sidebar-text": "#eef0ff",
+        "--color-sidebar-text-muted": "#a7abcf",
+        "--color-sidebar-border": "#24274a",
+        "--color-sidebar-active-bg": "#6a3df0",
+        "--color-sidebar-active-fg": "#ffffff"
+      },
+      "escuro": {
+        "--color-bg": "#0f1129",
+        "--color-surface": "#171a36",
+        "--color-surface-elevated": "#1e2244",
+        "--color-text": "#eef0ff",
+        "--color-text-muted": "#a9adcc",
+        "--color-text-subtle": "#8085a8",
+        "--color-border": "#2a2e52",
+        "--color-border-strong": "#3a3f6b",
+        "--color-accent": "var(--color-accent-500)",
+        "--color-accent-fg": "#ffffff",
+        "--color-accent-soft": "#2a2160",
+        "--color-accent-hover": "var(--color-accent-400)",
+        "--color-sidebar-bg": "#0a0c20",
+        "--color-sidebar-text": "#eef0ff",
+        "--color-sidebar-text-muted": "#a7abcf",
+        "--color-sidebar-border": "#1f2244",
+        "--color-sidebar-active-bg": "#7c4dff",
+        "--color-sidebar-active-fg": "#ffffff"
+      }
+    }
+  }
+}

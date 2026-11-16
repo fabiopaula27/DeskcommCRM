@@ -86,6 +86,14 @@ export const CHAVES_DE_TOKEN_DO_TEMA = [
   "--color-accent-fg",
   "--color-accent-soft",
   "--color-accent-hover",
+  // A barra lateral com cores próprias (`.barra-lateral` em `app/globals.css`).
+  // Ausentes, a barra usa as cores da página — o produto de sempre.
+  "--color-sidebar-bg",
+  "--color-sidebar-text",
+  "--color-sidebar-text-muted",
+  "--color-sidebar-border",
+  "--color-sidebar-active-bg",
+  "--color-sidebar-active-fg",
 ] as const;
 export type ChaveDeTokenDoTema = (typeof CHAVES_DE_TOKEN_DO_TEMA)[number];
 
