@@ -206,9 +206,12 @@ export type IfExists = z.infer<typeof ifExistsSchema>;
  * Text-match node: parks in `waiting_reply` like `ai_classify`, then routes on
  * the last inbound body without calling a model. v2 `branches` only.
  */
+/** Quantas regras um "Casar resposta" aceita: cabe um menu de 9 opções com número E texto. */
+export const MAX_REGRAS_CASAR_RESPOSTA = 24;
+
 export const matchReplyConfigSchema = z
   .strictObject({
-    branches: z.array(matchReplyBranchSchema).min(1).max(8),
+    branches: z.array(matchReplyBranchSchema).min(1).max(MAX_REGRAS_CASAR_RESPOSTA),
     grace_timeout_ms: z.number().int().min(900_000),
     save_to: replySaveToSchema.optional(),
     if_exists: ifExistsSchema.optional(),

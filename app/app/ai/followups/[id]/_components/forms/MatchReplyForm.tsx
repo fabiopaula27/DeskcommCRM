@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { matchReplyConfigSchema, type IfExists, type MatchReplyBranch, type ReplySaveTo } from "@/lib/followup/graph-schema";
+import { MAX_REGRAS_CASAR_RESPOSTA, matchReplyConfigSchema, type IfExists, type MatchReplyBranch, type ReplySaveTo } from "@/lib/followup/graph-schema";
 import { ESPERA_PELA_RESPOSTA, SE_INFORMACAO_JA_EXISTIR } from "@/lib/followup/vocabulario";
 import { camposDoFunil } from "@/lib/leads/campos-do-funil";
 import { Plus, Trash } from "@/lib/ui/icons";
@@ -120,7 +120,7 @@ export function MatchReplyForm({
             </div>
           </div>
         ))}
-        {branches.length < 8 && (
+        {branches.length < MAX_REGRAS_CASAR_RESPOSTA && (
           <Button
             type="button"
             variant="outline"
