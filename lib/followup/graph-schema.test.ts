@@ -42,6 +42,7 @@ describe('graph-schema', () => {
         // #2065 — dois tipos de ação que não falam com o cliente.
         'move_lead',
         'edit_lead_tag',
+        'set_contact_field',
         'end',
       ]);
     });

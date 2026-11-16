@@ -89,7 +89,7 @@ export function opcoes<K extends string>(mapa: Record<K, string>): ReadonlyArray
  * `stage_id` (um UUID, veja `engine.ts` → `loadLeadFacts`), então um campo de
  * texto livre pede ao dono da clínica que digite um identificador interno.
  */
-export type TipoDeValor = "etapa" | "etiqueta" | "numero" | "texto" | "dias";
+export type TipoDeValor = "etapa" | "etiqueta" | "numero" | "texto" | "dias" | "campo_do_contato";
 
 export interface CampoDeCondicao {
   rotulo: string;
@@ -105,6 +105,8 @@ export const CAMPOS_DA_CONDICAO: Record<CampoDaCondicao, CampoDeCondicao> = {
   // do negócio (`key`), e o que a tela pede é "quantos dias". Ver
   // `condicao-por-data.ts`.
   lead_date: { rotulo: "Data de um campo do negócio", tipoDeValor: "dias" },
+  // Campo geral ou personalizado do contato — a chave (`name` | `cf:<chave>`) vai em `key`.
+  contact_field: { rotulo: "Campo do contato", tipoDeValor: "campo_do_contato" },
 };
 
 // ─── condição: o par (campo, operador) ───────────────────────────────────
@@ -177,7 +179,10 @@ function diasEmPalavras(valor: string | number): string {
 const AVISO_SO_DATA =
   "«já passou há» e «falta» existem só para a regra de data de um campo do negócio.";
 
-const COMPARADORES: Record<CampoDaCondicao, Record<OperadorDaCondicao, Comparador>> = {
+type CampoBase = Exclude<CampoDaCondicao, "contact_field">;
+type OpBase = Exclude<OperadorDaCondicao, "preenchido" | "vazio">;
+
+const COMPARADORES_BASE: Record<CampoBase, Record<OpBase, Comparador>> = {
   lead_stage: {
     eq: {
       rotulo: "está na etapa",
@@ -396,6 +401,39 @@ const COMPARADORES: Record<CampoDaCondicao, Record<OperadorDaCondicao, Comparado
   },
 };
 
+const AVISO_SO_CAMPO_DO_CONTATO = "«está preenchido» e «está vazio» existem só para campo do contato.";
+
+const SEM_PREENCHIMENTO: Record<"preenchido" | "vazio", Comparador> = {
+  preenchido: { rotulo: "está preenchido", frase: () => "Regra de campo do contato aplicada a outro campo", oferecido: false, aviso: AVISO_SO_CAMPO_DO_CONTATO },
+  vazio: { rotulo: "está vazio", frase: () => "Regra de campo do contato aplicada a outro campo", oferecido: false, aviso: AVISO_SO_CAMPO_DO_CONTATO },
+};
+
+const NAO_E_CAMPO_DO_CONTATO = (rotulo: string): Comparador => ({
+  rotulo,
+  frase: () => "O campo do contato — comparação que só vale para número ou data",
+  oferecido: false,
+  aviso: "Campo do contato compara com «é igual a», «é diferente de», «contém», «está preenchido» ou «está vazio».",
+});
+
+const COMPARADORES: Record<CampoDaCondicao, Record<OperadorDaCondicao, Comparador>> = {
+  lead_stage: { ...COMPARADORES_BASE.lead_stage, ...SEM_PREENCHIMENTO },
+  tag: { ...COMPARADORES_BASE.tag, ...SEM_PREENCHIMENTO },
+  steps_taken: { ...COMPARADORES_BASE.steps_taken, ...SEM_PREENCHIMENTO },
+  last_outcome: { ...COMPARADORES_BASE.last_outcome, ...SEM_PREENCHIMENTO },
+  lead_date: { ...COMPARADORES_BASE.lead_date, ...SEM_PREENCHIMENTO },
+  contact_field: {
+    eq: { rotulo: "é igual a", frase: (v) => `O campo do contato é igual a ${aspas(v)}`, oferecido: true },
+    neq: { rotulo: "é diferente de", frase: (v) => `O campo do contato é diferente de ${aspas(v)}`, oferecido: true },
+    contains: { rotulo: "contém", frase: (v) => `O campo do contato contém ${aspas(v)}`, oferecido: true },
+    preenchido: { rotulo: "está preenchido", frase: () => "O campo do contato está preenchido", oferecido: true },
+    vazio: { rotulo: "está vazio", frase: () => "O campo do contato está vazio", oferecido: true },
+    gte: NAO_E_CAMPO_DO_CONTATO("é pelo menos"),
+    lte: NAO_E_CAMPO_DO_CONTATO("é no máximo"),
+    passou_ha: NAO_E_CAMPO_DO_CONTATO("já passou há"),
+    falta_para: NAO_E_CAMPO_DO_CONTATO("falta"),
+  },
+};
+
 /** Como se lê o par (campo, operador). Total: todo par salvo tem descrição, mesmo o que não se oferece mais. */
 export function comparador(campo: CampoDaCondicao, op: OperadorDaCondicao): Comparador {
   return COMPARADORES[campo][op];
@@ -454,6 +492,18 @@ export function regraValeSempre(campo: CampoDaCondicao, op: OperadorDaCondicao, 
   const n = Number(String(valor).trim());
   return String(valor).trim() !== "" && Number.isFinite(n) && n <= 0;
 }
+
+/** Nó "Preencher campo": de onde vem o valor gravado. */
+export const FONTES_DO_CAMPO: Record<"fixo" | "ultima_resposta", string> = {
+  fixo: "Um valor que eu escrevo",
+  ultima_resposta: "A última resposta do lead",
+};
+
+/** Nó "Preencher campo": o que fazer se o campo já tem valor. */
+export const SE_O_CAMPO_JA_TIVER: Record<"sobrescrever" | "manter", string> = {
+  sobrescrever: "Substituir pelo novo",
+  manter: "Manter o que já tem",
+};
 
 export const COMBINADORES: Record<Combinador, string> = {
   and: "Todas as condições",

@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 
-import { Bell, Play, Clock, GitBranch, Brain, ChatCircle, ArrowsClockwise, PaperPlaneTilt, Flag, Question, PuzzlePiece, Funnel, Tag } from "@/lib/ui/icons";
+import { Bell, Play, Clock, GitBranch, Brain, ChatCircle, ArrowsClockwise, PaperPlaneTilt, Flag, Question, PuzzlePiece, Funnel, Tag, IdentificationCard } from "@/lib/ui/icons";
+import { CAMPOS_FIXOS_DO_CONTATO } from "@/lib/followup/campo-do-contato";
 import type { FlowNode, NodeType } from "@/lib/followup/graph-schema";
 import { RESULTADOS_DO_FIM } from "@/lib/followup/vocabulario";
 import { NOS_DA_SUPERFICIE } from "@/lib/followup/validate-publish";
@@ -187,6 +188,15 @@ export const NODE_VISUALS: Record<NodeType, NodeVisual> = {
     defaultLabel: "Gravar tag no lead",
     defaultConfig: () => ({ tags: [] }),
   },
+  set_contact_field: {
+    type: "set_contact_field",
+    paletteLabel: "Preencher campo do contato",
+    icon: IdentificationCard,
+    chipClassName: "bg-info-bg text-info-fg",
+    borderClassName: "border-l-info",
+    defaultLabel: "Preencher campo",
+    defaultConfig: () => ({ alvo: "", fonte: "fixo", valor: "", se_ja_tiver: "sobrescrever" }),
+  },
   end: {
     type: "end",
     paletteLabel: "Fim",
@@ -296,6 +306,14 @@ export function describeNodeConfig(
     case "edit_lead_tag": {
       const c = config as ConfigOf<"edit_lead_tag">;
       return c.tags.length ? c.tags.join(", ") : t("sem tag escolhida");
+    }
+    case "set_contact_field": {
+      const c = config as ConfigOf<"set_contact_field">;
+      if (!c.alvo) return t("sem campo escolhido");
+      const fixo = CAMPOS_FIXOS_DO_CONTATO.find((f) => f.alvo === c.alvo);
+      const campo = fixo ? t(fixo.rotulo) : c.alvo.replace(/^cf:/, "");
+      const valor = c.fonte === "ultima_resposta" ? t("última resposta") : `"${c.valor ?? ""}"`;
+      return `${campo} = ${valor}`;
     }
     case "end": {
       const c = config as ConfigOf<"end">;

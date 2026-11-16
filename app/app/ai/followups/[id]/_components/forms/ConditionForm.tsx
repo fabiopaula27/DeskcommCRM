@@ -1,5 +1,7 @@
 "use client";
 
+import { opSemValor } from "@/lib/followup/campo-do-contato";
+import { SeletorDeCampoDoContato } from "./SeletorDeCampoDoContato";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -278,7 +280,8 @@ export function ConditionForm({
                   // A chave só pertence à regra de data: deixá-la para trás
                   // guardaria `fim_teste` numa regra de etiqueta, e o publish
                   // recusaria uma regra que a tela mostra como pronta.
-                  if (campo !== "lead_date") delete (trocado as { key?: string }).key;
+                  if (campo !== "lead_date" && campo !== "contact_field") delete (trocado as { key?: string }).key;
+                  if (campo === "contact_field") (trocado as { key?: string }).key = "";
                   return trocado;
                 });
                 setChecks(next);
@@ -363,6 +366,25 @@ export function ConditionForm({
                     "O campo é o mesmo nome usado na ficha do negócio. O prazo conta em dias de calendário no fuso da organização; 0 inclui o dia de hoje.",
                   )}
                 </p>
+              </div>
+            ) : CAMPOS_DA_CONDICAO[check.field].tipoDeValor === "campo_do_contato" ? (
+              <div className="grid gap-2">
+                <SeletorDeCampoDoContato
+                  valor={String((check as { key?: string }).key ?? "")}
+                  onEscolher={(alvo) => {
+                    const next = checks.map((c, i) => (i === idx ? { ...c, key: alvo } : c));
+                    setChecks(next);
+                    commit({ checks: next });
+                  }}
+                />
+                {!opSemValor(check.op) && (
+                  <Input
+                    aria-label={t("Valor")}
+                    placeholder={t("Valor")}
+                    value={String(check.value)}
+                    onChange={(e) => trocarValor(idx, e.target.value)}
+                  />
+                )}
               </div>
             ) : CAMPOS_DA_CONDICAO[check.field].tipoDeValor === "numero" ? (
               <Input

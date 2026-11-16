@@ -8,6 +8,7 @@ import { NO_REPLY_BRANCH_ID, REPEAT_BODY_BRANCH_ID, REPEAT_DONE_BRANCH_ID, nodeB
 import type { FlowEdge, FlowNode, ReplySaveTo } from "./graph-schema";
 import { avaliarDataRelativa, ehOpDeData, type OpDeData } from "./condicao-por-data";
 import { parseReplyCount } from "./parse-count";
+import { avaliarCampoDoContato, opSemValor, type FichaDoContato } from "./campo-do-contato";
 import { janelaDaEspera, primeiroInstanteNoHorario } from "./espera-no-horario";
 import { clampEspera, esperaPlanejadaDe, type EsperaAdaptativa } from "./timing-plan";
 import { fraseDeConfirmacao } from "./vocabulario";
@@ -104,6 +105,8 @@ export interface LeadFacts {
   last_outcome: string | null;
   contact_name?: string | null;
   custom_fields?: Record<string, unknown>;
+  /** Campos gerais e personalizados do CONTATO — a regra "Campo do contato" lê daqui. */
+  contato?: FichaDoContato | null;
 }
 
 /** Reference to a `followup_enrollment_events` row — only what `resolveWaitPhase` needs. */
@@ -480,8 +483,8 @@ export function ultimoDesfechoDe(events: EnrollmentEventRef[]): string | null {
 
 function evaluateCheck(
   check: {
-    field: "lead_stage" | "tag" | "steps_taken" | "last_outcome" | "lead_date";
-    op: "eq" | "neq" | "gte" | "lte" | "contains" | OpDeData;
+    field: "lead_stage" | "tag" | "steps_taken" | "last_outcome" | "lead_date" | "contact_field";
+    op: "eq" | "neq" | "gte" | "lte" | "contains" | "preenchido" | "vazio" | OpDeData;
     value: string | number;
     key?: string;
   },
@@ -503,7 +506,8 @@ function evaluateCheck(
   }
   // Operador de data em campo que não é de data: o schema recusa no publish, e
   // aqui responde `false` em vez de cair num `switch` que não o conhece.
-  if (ehOpDeData(check.op)) return false;
+  if (check.field === "contact_field") return avaliarCampoDoContato(lead.contato, check.key, check.op, check.value);
+  if (ehOpDeData(check.op) || opSemValor(check.op)) return false;
 
   const actual: string | number | null | string[] =
     check.field === "lead_stage" ? lead.lead_stage
@@ -544,6 +548,8 @@ function evaluateCheck(
       return typeof actual === "number" && typeof expected === "number" && actual <= expected;
     case "contains":
       return typeof actual === "string" && typeof expected === "string" && actual.includes(expected);
+    default:
+      return false;
   }
 }
 
@@ -965,6 +971,14 @@ export function processNode(input: {
       // este nó não está em `NOS_QUE_ENVIAM`).
       const edge = selectEdge(edges, node.id, { type: "always" });
       if (!edge) return { kind: "fail", error: `edit_lead_tag node "${node.id}" has no outbound edge` };
+      return { kind: "advance", next_node_id: edge.target, next_eval_at: clock() };
+    }
+
+    case "set_contact_field": {
+      // Mesma passagem do `edit_lead_tag`: a gravação acontece no motor, depois
+      // do evento do passo (a trava de replay). Nenhuma mensagem sai daqui.
+      const edge = selectEdge(edges, node.id, { type: "always" });
+      if (!edge) return { kind: "fail", error: `set_contact_field node "${node.id}" has no outbound edge` };
       return { kind: "advance", next_node_id: edge.target, next_eval_at: clock() };
     }
 

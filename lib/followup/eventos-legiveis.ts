@@ -139,6 +139,7 @@ const TIPO_DO_NO: Record<FlowNode["type"], string> = {
   // #2065 — as duas ações que também não falam com o cliente.
   move_lead: "Mover no funil",
   edit_lead_tag: "Editar tag",
+  set_contact_field: "Preencher campo",
   end: "Fim",
 };
 
@@ -215,6 +216,13 @@ export function resumoDoNo(node: FlowNode): NoDoDossie {
         resumo: node.config.tags.length
           ? `grava a(s) tag(s) ${node.config.tags.join(", ")} no lead — sem mensagem ao cliente`
           : "grava tag no lead, ainda sem destino escolhido — sem mensagem ao cliente",
+      };
+    case "set_contact_field":
+      return {
+        ...base,
+        resumo: node.config.alvo
+          ? `preenche o campo ${node.config.alvo} do contato — sem mensagem ao cliente`
+          : "preenche um campo do contato, ainda sem campo escolhido — sem mensagem ao cliente",
       };
     case "end":
       return { ...base, resumo: `encerra — ${DESFECHO[node.config.outcome] ?? node.config.outcome}` };

@@ -57,6 +57,12 @@ import {
 import { interpolarDestino, persistirRespostaFollowupSupabase } from "./persistir-resposta";
 import { funilUnicoDasEtapas, idsDeEtapaCitados } from "./etapas-citadas";
 import { desvioAntesDoEnvio } from "./condicao-antes-do-envio";
+import {
+  COLUNAS_FIXAS_DO_CONTATO,
+  patchDoContato,
+  valorParaGravar,
+  type FichaDoContato,
+} from "./campo-do-contato";
 import { criarTarefaInterna as criarTarefaNoCrm } from "@/lib/tarefas/criar-tarefa";
 import { moveLeadHandler } from "@/app/api/v1/leads/_handler";
 import type { HandlerCtx } from "@/lib/api/handlers/types";
@@ -162,6 +168,7 @@ export interface AdminClient {
     tags: string[];
     contact_name?: string | null;
     custom_fields?: Record<string, unknown>;
+    contato?: FichaDoContato | null;
   }>;
   /**
    * Os `pipeline_id` das etapas citadas pelo grafo, para `funilUnicoDasEtapas`
@@ -249,6 +256,13 @@ export interface AdminClient {
    * `no-show-recuperacao-esgotada.ts`.
    */
   abrirAvisoRecuperacaoEsgotada?(item: AvisoRecuperacaoEsgotada): Promise<void>;
+  /** Nó `set_contact_field`: grava um valor num campo geral ou personalizado do contato. */
+  preencherCampoDoContato?(input: {
+    organization_id: string;
+    contact_id: string;
+    alvo: string;
+    valor: string;
+  }): Promise<void>;
   persistirRespostaFollowup(input: {
     organization_id: string;
     contact_id: string;
@@ -745,6 +759,23 @@ async function applyResult(
       }
     }
   }
+  if (result.kind === "advance" && !isReplay && node.type === "set_contact_field" && respostaParaGravar) {
+    try {
+      await db.preencherCampoDoContato?.({
+        organization_id: enrollment.organization_id,
+        contact_id: enrollment.contact_id,
+        alvo: node.config.alvo,
+        valor: respostaParaGravar,
+      });
+    } catch (err) {
+      logger.warn("followup_set_contact_field_failed", {
+        organization_id: enrollment.organization_id,
+        enrollment_id: enrollment.id,
+        node_id: node.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
   if (result.kind === "advance" && !isReplay && node.type === "edit_lead_tag") {
     try {
       await db.editarTagDoLead?.({
@@ -1093,6 +1124,7 @@ async function processEnrollment(
     last_outcome: null,
     contact_name: leadRow.contact_name ?? null,
     custom_fields: leadRow.custom_fields,
+    contato: leadRow.contato ?? null,
   };
 
   let waitElapsed: boolean | undefined;
@@ -1254,6 +1286,22 @@ async function processEnrollment(
       ? await db.loadRenderContext?.(enrollment.organization_id, enrollment.contact_id)
       : null;
 
+  // Nó `set_contact_field`: o valor é decidido AQUI (a ficha e a última
+  // resposta estão à mão) e viaja pelo mesmo parâmetro da resposta a gravar.
+  let valorDoCampo: string | null = null;
+  if (node.type === "set_contact_field" && result.kind === "advance") {
+    const ultima =
+      node.config.fonte === "ultima_resposta"
+        ? await db.loadLastInboundBody(enrollment.organization_id, enrollment.contact_id, null, null)
+        : null;
+    valorDoCampo = valorParaGravar({
+      config: node.config,
+      ficha: lead.contato,
+      ultimaResposta: ultima,
+      nome: lead.contact_name ?? null,
+    });
+  }
+
   await applyResult(
     deps,
     enrollment,
@@ -1262,7 +1310,11 @@ async function processEnrollment(
     summary,
     smartWaits,
     events,
-    node.type === "match_reply" && wokeEarly ? (lastInboundBody ?? "").trim() || null : null,
+    node.type === "match_reply" && wokeEarly
+      ? (lastInboundBody ?? "").trim() || null
+      : node.type === "set_contact_field"
+        ? valorDoCampo
+        : null,
     contexto,
   );
 }
@@ -1405,10 +1457,16 @@ export function createSupabaseAdminClient(admin: SupabaseClient): AdminClient {
           .order("updated_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
-        admin.from("contacts").select("name").eq("organization_id", orgId).eq("id", contactId).maybeSingle(),
+        admin
+          .from("contacts")
+          .select([...COLUNAS_FIXAS_DO_CONTATO, "custom_fields"].join(", "))
+          .eq("organization_id", orgId)
+          .eq("id", contactId)
+          .maybeSingle(),
       ]);
       if (leadErr) throw new Error(leadErr.message);
       if (contactErr) throw new Error(contactErr.message);
+      const contato = contact as unknown as Record<string, unknown> | null;
       const custom =
         lead?.custom_fields && typeof lead.custom_fields === "object" && !Array.isArray(lead.custom_fields)
           ? (lead.custom_fields as Record<string, unknown>)
@@ -1416,8 +1474,19 @@ export function createSupabaseAdminClient(admin: SupabaseClient): AdminClient {
       return {
         lead_stage: lead?.stage_id ?? null,
         tags: lead?.tags ?? [],
-        contact_name: contact?.name ?? null,
+        contact_name: (contato?.name as string | null | undefined) ?? null,
         custom_fields: custom,
+        contato: contato
+          ? {
+              fixos: Object.fromEntries(
+                COLUNAS_FIXAS_DO_CONTATO.map((c) => [c, (contato[c] as string | null | undefined) ?? null]),
+              ),
+              personalizados:
+                contato.custom_fields && typeof contato.custom_fields === "object" && !Array.isArray(contato.custom_fields)
+                  ? (contato.custom_fields as Record<string, unknown>)
+                  : {},
+            }
+          : null,
       };
     },
     /**
@@ -1749,6 +1818,24 @@ export function createSupabaseAdminClient(admin: SupabaseClient): AdminClient {
       // `inbox_appointment_revision_unique` (0224) garante um por revisão,
       // inclusive depois de resolvido. Repetição é no-op, não erro.
       if (error && error.code !== "23505") throw new Error(error.message);
+    },
+    async preencherCampoDoContato(input) {
+      const { data: atual, error: selErr } = await admin
+        .from("contacts")
+        .select("custom_fields")
+        .eq("organization_id", input.organization_id)
+        .eq("id", input.contact_id)
+        .maybeSingle();
+      if (selErr) throw new Error(selErr.message);
+      if (!atual) return;
+      const patch = patchDoContato(input.alvo, input.valor, atual.custom_fields as Record<string, unknown> | null);
+      if (!patch) return;
+      const { error } = await admin
+        .from("contacts")
+        .update({ ...patch, updated_at: new Date().toISOString() })
+        .eq("organization_id", input.organization_id)
+        .eq("id", input.contact_id);
+      if (error) throw new Error(error.message);
     },
     async persistirRespostaFollowup(input) {
       await persistirRespostaFollowupSupabase(admin, input);

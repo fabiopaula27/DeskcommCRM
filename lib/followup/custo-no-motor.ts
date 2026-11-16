@@ -35,6 +35,7 @@ export const CUSTO_NO_MOTOR: Record<NodeType, number> = {
   internal_task: 1,
   move_lead: 1,
   edit_lead_tag: 1,
+  set_contact_field: 1,
   end: 1,
   // Dois ticks: arma e fecha.
   wait: 2,

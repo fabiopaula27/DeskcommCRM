@@ -3,6 +3,7 @@ import { variaveisDoModeloSchema } from '@/lib/channels/meta/variaveis-do-fluxo'
 
 import { PRIORIDADES_DA_TAREFA } from '@/lib/tarefas/tipos';
 import { ehOpDeData, OPS_DE_DATA } from './condicao-por-data';
+import { ehOpDoCampoDoContato, opSemValor } from './campo-do-contato';
 
 /**
  * Flow graph schema for the follow-up automation system.
@@ -30,6 +31,8 @@ export const NODE_TYPES = [
   // fora desta fatia e é o passo seguinte da issue.
   'move_lead',
   'edit_lead_tag',
+  // Grava um valor (fixo ou a última resposta) num campo do contato — ver `campo-do-contato.ts`.
+  'set_contact_field',
   'end',
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
@@ -383,8 +386,10 @@ export const conditionCheckSchema = z
       // `condicao-por-data.ts`. É o que permite perguntar "o período de teste
       // terminou?", que nenhum dos quatro campos acima alcança.
       'lead_date',
+      // Campo geral ou personalizado do CONTATO (`key` = `name` | `cf:<chave>`).
+      'contact_field',
     ]),
-    op: z.enum(['eq', 'neq', 'gte', 'lte', 'contains', ...OPS_DE_DATA]),
+    op: z.enum(['eq', 'neq', 'gte', 'lte', 'contains', 'preenchido', 'vazio', ...OPS_DE_DATA]),
     value: z.union([z.string(), z.number()]),
     /**
      * A chave em `crm_leads.custom_fields` que a regra lê (ex.: `fim_teste`).
@@ -412,12 +417,32 @@ export const conditionCheckSchema = z
     message: `uma regra de data usa ${OPS_DE_DATA.join(' ou ')}`,
     path: ['op'],
   })
+  .refine((c) => c.field !== 'contact_field' || ehOpDoCampoDoContato(c.op), {
+    message: 'campo do contato usa é igual, é diferente, contém, está preenchido ou está vazio',
+    path: ['op'],
+  })
+  .refine((c) => c.field === 'contact_field' || !opSemValor(c.op), {
+    message: 'está preenchido / está vazio existem só para campo do contato',
+    path: ['op'],
+  })
   .refine((c) => c.field === 'lead_date' || !ehOpDeData(c.op), {
     message: 'passou_ha e falta_para existem só para regra de data',
     path: ['op'],
   });
 
 export type ConditionCheck = z.infer<typeof conditionCheckSchema>;
+
+/**
+ * Nó `set_contact_field` — grava num campo do contato (geral ou personalizado)
+ * um texto fixo (aceita {nome}, {primeiro_nome}, {campo:cf:chave}) ou a última
+ * resposta do lead. Rascunho aceita alvo vazio; o publish exige.
+ */
+export const setContactFieldConfigSchema = z.strictObject({
+  alvo: z.string().max(70),
+  fonte: z.enum(['fixo', 'ultima_resposta']).default('fixo'),
+  valor: z.string().max(500).optional(),
+  se_ja_tiver: z.enum(['sobrescrever', 'manter']).default('sobrescrever'),
+});
 
 /**
  * Condition node configuration.
@@ -684,6 +709,17 @@ export const flowNodeSchema = z.discriminatedUnion('type', [
       y: z.number(),
     }),
     config: editLeadTagConfigSchema,
+  }),
+  // Nó de ação: preenche um campo do contato, sem mensagem
+  z.strictObject({
+    id: z.string().min(1),
+    type: z.literal('set_contact_field'),
+    label: z.string().min(1).max(60),
+    position: z.strictObject({
+      x: z.number(),
+      y: z.number(),
+    }),
+    config: setContactFieldConfigSchema,
   }),
   // End node: terminal state
   z.strictObject({

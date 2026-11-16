@@ -23,6 +23,7 @@ import { flowGraphSchema } from "./graph-schema";
 import { EVENTO_ACAO_ADIADA, EVENTO_CLASSIFICACAO_ESPERANDO, classEdgeMatch, selectEdge, type EnrollmentRow } from "./node-handlers";
 import { coletarEsperasAdaptativas, montarTimingPlan, type PropostaDeEspera } from "./timing-plan";
 import { persistirRespostaFollowupPg } from "./persistir-resposta";
+import { COLUNAS_FIXAS_DO_CONTATO, lerAlvo, patchDoContato } from "./campo-do-contato";
 import { contextoDoContato } from "@/lib/automation/texto-do-followup";
 
 /** Superset de AdminClient: a ponte precisa do snapshot COMPLETO do enrollment
@@ -388,16 +389,28 @@ export function createPgAdminClient(pool: pg.Pool): TurnBridgeAdminClient {
          order by updated_at desc limit 1`,
         [orgId, contactId],
       );
-      const { rows: contacts } = await pool.query<{ name: string | null }>(
-        `select name from contacts where organization_id = $1 and id = $2`,
+      // Colunas de uma lista fixa do código (nunca do grafo): seguro interpolar.
+      const { rows: contacts } = await pool.query<Record<string, unknown>>(
+        `select ${COLUNAS_FIXAS_DO_CONTATO.join(", ")}, custom_fields from contacts where organization_id = $1 and id = $2`,
         [orgId, contactId],
       );
       const lead = leads[0];
       return {
         lead_stage: lead?.stage_id ?? null,
         tags: lead?.tags ?? [],
-        contact_name: contacts[0]?.name ?? null,
+        contact_name: (contacts[0]?.name as string | null | undefined) ?? null,
         custom_fields: lead?.custom_fields ?? {},
+        contato: contacts[0]
+          ? {
+              fixos: Object.fromEntries(
+                COLUNAS_FIXAS_DO_CONTATO.map((c) => [c, (contacts[0]![c] as string | null | undefined) ?? null]),
+              ),
+              personalizados:
+                contacts[0].custom_fields && typeof contacts[0].custom_fields === "object" && !Array.isArray(contacts[0].custom_fields)
+                  ? (contacts[0].custom_fields as Record<string, unknown>)
+                  : {},
+            }
+          : null,
       };
     },
     /** #2528 — contexto do render das mensagens de follow-up (o MESMO par de leituras de `loadLeadFacts`, com as linhas inteiras). */
@@ -507,6 +520,26 @@ export function createPgAdminClient(pool: pg.Pool): TurnBridgeAdminClient {
            where ref_kind = 'appointment' and appointment_revision is not null
            do nothing`,
         [item.organization_id, item.appointment_id, item.appointment_revision],
+      );
+    },
+    async preencherCampoDoContato(input) {
+      const alvo = lerAlvo(input.alvo);
+      if (!alvo) return;
+      if (alvo.tipo === "personalizado") {
+        // Merge atômico no jsonb: não perde campo gravado em paralelo.
+        await pool.query(
+          `update contacts set custom_fields = coalesce(custom_fields, '{}'::jsonb) || jsonb_build_object($3::text, $4::text), updated_at = now()
+           where organization_id = $1 and id = $2`,
+          [input.organization_id, input.contact_id, alvo.chave, input.valor],
+        );
+        return;
+      }
+      const patch = patchDoContato(input.alvo, input.valor, null);
+      if (!patch) return;
+      // A coluna vem da lista fixa (`lerAlvo` recusa qualquer outra).
+      await pool.query(
+        `update contacts set ${alvo.coluna} = $3, updated_at = now() where organization_id = $1 and id = $2`,
+        [input.organization_id, input.contact_id, input.valor],
       );
     },
     async persistirRespostaFollowup(input) {

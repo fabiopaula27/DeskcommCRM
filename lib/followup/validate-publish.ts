@@ -9,6 +9,7 @@ import { recusaDeMotivoForaDoVocabulario } from '../leads/motivo-da-perda';
 import { capabilitiesOf, transportaMensagem, type ChannelProvider } from '../channels/capabilities';
 import { CUSTO_NO_MOTOR, TETO_DE_PASSOS_DO_MOTOR } from './custo-no-motor';
 import { horarioDaEsperaValido } from './espera-no-horario';
+import { alvoGravavel, lerAlvo, opSemValor } from './campo-do-contato';
 
 /**
  * Structural publish validator for follow-up flow graphs.
@@ -55,6 +56,9 @@ export const PUBLISH_ERROR_CODES = [
   // Regra de data (item 14): sem o campo do negócio ela não tem o que comparar
   // e responderia `false` para sempre, sem dizer por quê.
   'campo_de_data_ausente',
+  // Campo do contato: regra ou nó "Preencher campo" sem campo válido, ou sem valor.
+  'campo_do_contato_ausente',
+  'valor_do_campo_ausente',
   // Espera com horário (`ate_o_horario`): início depois do fim, nenhum dia ou
   // hora torta — o motor não teria como obedecer e terminaria a espera na
   // duração crua, calado (`espera-no-horario.ts` falha aberta).
@@ -276,8 +280,8 @@ function cicloDoEncadeamento(
  * recusava em silêncio; a recusa aqui é o erro que a pessoa lê no editor.
  */
 export const NOS_DA_SUPERFICIE: Record<FollowupFlowSurface, readonly NodeType[]> = {
-  followup: ['trigger', 'wait', 'condition', 'ai_classify', 'match_reply', 'repeat', 'action', 'internal_task', 'move_lead', 'edit_lead_tag', 'end'],
-  crm_automation: ['trigger', 'wait', 'condition', 'ai_classify', 'match_reply', 'repeat', 'action', 'internal_task', 'move_lead', 'edit_lead_tag', 'end'],
+  followup: ['trigger', 'wait', 'condition', 'ai_classify', 'match_reply', 'repeat', 'action', 'internal_task', 'move_lead', 'edit_lead_tag', 'set_contact_field', 'end'],
+  crm_automation: ['trigger', 'wait', 'condition', 'ai_classify', 'match_reply', 'repeat', 'action', 'internal_task', 'move_lead', 'edit_lead_tag', 'set_contact_field', 'end'],
   atendimento: ['trigger', 'collect', 'skill', 'end'],
 };
 
@@ -429,6 +433,7 @@ export const CONTA_NO_TETO: Record<NodeType, boolean> = {
   internal_task: false, // lembrete para a equipe
   move_lead: false, // move o card no funil
   edit_lead_tag: false, // grava tag no lead
+  set_contact_field: false, // grava campo do contato
   end: false, // desfecho
 };
 
@@ -962,6 +967,14 @@ function conferirRegras(
       return;
     }
 
+    if (check.field === 'contact_field') {
+      if (!lerAlvo(check.key)) {
+        errors.push({ ...ancora, code: 'campo_do_contato_ausente', message: `${regra}: escolha o campo do contato.` });
+        return;
+      }
+      if (opSemValor(check.op)) return;
+    }
+
     if (valor === '') {
       errors.push({ ...ancora, code: 'empty_check_value', message: `${regra} sem valor: preencha ou remova a regra.` });
       return;
@@ -1177,6 +1190,21 @@ export function validateFlowForPublish(
   for (const node of [...nodes].sort(byId)) {
     if (node.type === 'move_lead') conferirEtapaDestino(node, contexto, errors);
     if (node.type === 'edit_lead_tag') conferirTags(node, errors);
+    if (node.type === 'set_contact_field') {
+      if (!alvoGravavel(node.config.alvo)) {
+        errors.push({
+          node_id: node.id,
+          code: 'campo_do_contato_ausente',
+          message: `A caixa "${node.label}" não tem campo do contato para preencher — escolha um campo.`,
+        });
+      } else if (node.config.fonte === 'fixo' && !(node.config.valor ?? '').trim()) {
+        errors.push({
+          node_id: node.id,
+          code: 'valor_do_campo_ausente',
+          message: `A caixa "${node.label}" não tem valor para gravar — escreva o valor ou use a última resposta.`,
+        });
+      }
+    }
     if (node.type === 'action' && contexto.modelos !== undefined) {
       const { prontos, doCanal } = contexto.modelos;
       const cfg = node.config;
