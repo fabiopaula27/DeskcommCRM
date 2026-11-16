@@ -1,0 +1,28 @@
+{
+  "format_version": 1,
+  "origin": "https://solutcrm.gestordaweb.com.br",
+  "revision": 1,
+  "entries": [
+    {
+      "publisher": "solutcrm",
+      "name": "tema-violeta",
+      "version": "1.0.0",
+      "license": "MIT",
+      "host_api": { "min": 2, "max": 2 },
+      "display": {
+        "title": { "pt-BR": "Tema Violeta SOLUTCRM", "es": "Tema Violeta SOLUTCRM" },
+        "summary": {
+          "pt-BR": "Fundo claro levemente azulado, cartões brancos, textos azul-marinho e destaques em violeta. Com versão escura em azul-noite.",
+          "es": "Fondo claro ligeramente azulado, tarjetas blancas, textos azul marino y detalles en violeta. Con versión oscura azul noche."
+        },
+        "category": "productivity",
+        "icon": "Lightbulb"
+      },
+      "permissions": ["theme.apply"],
+      "sha256": "0663672dc3f1c45adc281a9f64dfeca0e26debe95277c46201ba642b2d21da17",
+      "byte_length": 2462,
+      "publisher_label": "SOLUTCRM",
+      "published_at": "2026-11-16"
+    }
+  ]
+}

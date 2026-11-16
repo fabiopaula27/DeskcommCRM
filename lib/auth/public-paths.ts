@@ -6,6 +6,10 @@ export const PUBLIC_PATHS: RegExp[] = [
   // Link público persistido: org e destino são resolvidos exclusivamente no servidor.
   /^\/api\/v1\/rastreio\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
   /^\/$/,
+  // Pacote de extensão servido pela própria instalação (catálogo com origem =
+  // este domínio): o host baixa `/packages/<sha256>.json` sem sessão. Só o nome
+  // exato do digest — nenhum outro arquivo nasce público de carona.
+  /^\/packages\/[a-f0-9]{64}\.json$/,
   /^\/login(\/.*)?$/,
   /^\/signup$/,
   /^\/auth\/confirm$/,
