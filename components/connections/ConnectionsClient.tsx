@@ -21,6 +21,7 @@ import {
 import {
   CHANNEL_PROVIDER_SOCIAL,
   DEFAULT_CHANNEL_PROVIDER,
+  ehProviderEvolution,
   capabilitiesOf,
 } from "@/lib/channels/capabilities";
 import type { ChannelProvider } from "@/lib/channels/capabilities";
@@ -228,7 +229,11 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
 
   // A mesma lista que a tela desenha é a que a ação em lote comanda: filtrar
   // social aqui (como a tela já faz) evita um botão que pede ids que ninguém vê.
-  const list = (sessions ?? []).filter((session) => session.provider !== CHANNEL_PROVIDER_SOCIAL);
+  // Os canais por QR do servidor próprio têm cartão e rotas à parte
+  // (`CanalEvolutionClient`): aqui o Reconectar bateria na rota do WAHA.
+  const list = (sessions ?? []).filter(
+    (session) => session.provider !== CHANNEL_PROVIDER_SOCIAL && !ehProviderEvolution(session.provider),
+  );
   /** Alvo de cada botão de lote — os dois só existem quando têm o que fazer. */
   const paraPausar = list.filter((c) => !canalDesativado(c.metadata));
   const paraRetomar = list.filter((c) => canalDesativado(c.metadata));

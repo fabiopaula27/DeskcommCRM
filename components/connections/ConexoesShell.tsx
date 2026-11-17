@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { RedesSociaisClient } from "./RedesSociaisClient";
+import { CanalEvolutionClient } from "./CanalEvolutionClient";
 import { CanalGraphParceiroClient } from "./CanalGraphParceiroClient";
 import { CanalOficialClient } from "./CanalOficialClient";
 import { CanalParceiroClient } from "./CanalParceiroClient";
@@ -41,10 +42,13 @@ import { rotaDeTemplates } from "@/lib/channels/templates-fonte";
 export function ConexoesShell({
   wahaConfigured,
   wacallsConfigured,
+  evolutionConfigured = false,
   graphParceiro = null,
 }: {
   wahaConfigured: boolean;
   wacallsConfigured: boolean;
+  /** Vem do servidor (variáveis de ambiente); sem ele o cartão de QR não aparece. */
+  evolutionConfigured?: boolean;
   /**
    * O canal parceiro que espelha a Cloud API (recorte do #1130) é OPCIONAL DA
    * INSTALAÇÃO e nasce desligado (decisão do dono, doc 54). `null` = a
@@ -110,7 +114,10 @@ export function ConexoesShell({
       </TabsList>
 
       <TabsContent value="numeros" className="mt-0">
-        <ConnectionsClient wahaConfigured={wahaConfigured} />
+        <div className="flex flex-col gap-4">
+          <CanalEvolutionClient isConfigured={evolutionConfigured} />
+          <ConnectionsClient wahaConfigured={wahaConfigured} />
+        </div>
       </TabsContent>
 
       <TabsContent value="telefonia" className="mt-0">

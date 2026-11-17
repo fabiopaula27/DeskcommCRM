@@ -1,0 +1,36 @@
+{
+  "instance": {
+    "instanceName": "crm-teste",
+    "instanceId": "00000000-0000-4000-8000-000000000001",
+    "integration": "WHATSAPP-BAILEYS",
+    "webhookWaBusiness": null,
+    "accessTokenWaBusiness": "",
+    "status": "connecting"
+  },
+  "hash": "FAKE-INSTANCE-TOKEN-0001",
+  "webhook": {
+    "webhookUrl": "https://crm.example.test/api/webhooks/evolution/abc123",
+    "webhookHeaders": null,
+    "webhookByEvents": false,
+    "webhookBase64": true
+  },
+  "websocket": {},
+  "rabbitmq": {},
+  "sqs": {},
+  "settings": {
+    "rejectCall": false,
+    "msgCall": "",
+    "groupsIgnore": true,
+    "alwaysOnline": false,
+    "readMessages": false,
+    "readStatus": false,
+    "syncFullHistory": false,
+    "wavoipToken": ""
+  },
+  "qrcode": {
+    "pairingCode": null,
+    "code": "2@FAKEQRCODE,FAKEKEY,FAKEKEY2,FAKEKEY3,1",
+    "base64": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+    "count": 1
+  }
+}

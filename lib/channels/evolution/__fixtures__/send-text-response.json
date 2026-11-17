@@ -1,0 +1,17 @@
+{
+  "key": {
+    "remoteJid": "5511999990001@s.whatsapp.net",
+    "fromMe": true,
+    "id": "3EB0A1B2C3D4E5F60007"
+  },
+  "pushName": "",
+  "status": "PENDING",
+  "message": {
+    "conversation": "Olá, tudo bem?"
+  },
+  "contextInfo": null,
+  "messageType": "conversation",
+  "messageTimestamp": 1763298060,
+  "instanceId": "00000000-0000-4000-8000-000000000001",
+  "source": "unknown"
+}

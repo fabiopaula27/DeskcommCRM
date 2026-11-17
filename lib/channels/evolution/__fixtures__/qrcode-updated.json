@@ -1,0 +1,17 @@
+{
+  "event": "qrcode.updated",
+  "instance": "crm-teste",
+  "data": {
+    "qrcode": {
+      "instance": "crm-teste",
+      "pairingCode": null,
+      "code": "2@FAKEQRCODE,FAKEKEY,FAKEKEY2,FAKEKEY3,1",
+      "base64": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    }
+  },
+  "destination": "https://crm.example.test/api/webhooks/evolution/abc123",
+  "date_time": "2026-11-16T10:00:00.000-03:00",
+  "sender": "5511999990000@s.whatsapp.net",
+  "server_url": "http://localhost:8085",
+  "apikey": "FAKE-INSTANCE-TOKEN-0001"
+}

@@ -20,7 +20,13 @@ import { CHANNEL_PROVIDER_SOCIAL } from "./capabilities";
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { CHANNEL_PROVIDER_DATAFY, CHANNEL_PROVIDER_ZERNIO } from "./capabilities";
+import {
+  CHANNEL_PROVIDER_DATAFY,
+  CHANNEL_PROVIDER_EVOLUTION,
+  CHANNEL_PROVIDER_ZERNIO,
+} from "./capabilities";
+import { ingestEvolutionEvento, verifyEvolutionSecret } from "./evolution/ingest";
+import { lerEventoEvolution } from "./evolution/webhook";
 import { canalGraphParceiroLigado } from "./graph-parceiro/credentials";
 import { graphPartnerRefsDaSessao } from "./graph-parceiro/session";
 import {
@@ -86,7 +92,11 @@ export function acceptsInboundWebhook(provider: string): boolean {
   // O canal Datafy é opcional da instalação: desligado, a entrada dele não
   // existe — nem para quem tem o token de uma sessão gravada antes.
   if (provider === CHANNEL_PROVIDER_DATAFY) return canalGraphParceiroLigado();
-  return provider === CHANNEL_PROVIDER_ZERNIO || provider === CHANNEL_PROVIDER_SOCIAL;
+  return (
+    provider === CHANNEL_PROVIDER_ZERNIO ||
+    provider === CHANNEL_PROVIDER_SOCIAL ||
+    provider === CHANNEL_PROVIDER_EVOLUTION
+  );
 }
 
 /** Authenticate before archiving raw payloads. The handler repeats this guard for non-HTTP callers. */
@@ -96,6 +106,8 @@ export function verifyInboundWebhookSignature(provider: string, raw: string, hea
   if (provider === CHANNEL_PROVIDER_DATAFY) {
     return verifyGraphPartnerSignature(raw, headers.get(HEADER_ASSINATURA), headers.get(HEADER_TIMESTAMP), secret);
   }
+  // Evolution não assina o corpo: o segredo da sessão vai num header próprio.
+  if (provider === CHANNEL_PROVIDER_EVOLUTION) return verifyEvolutionSecret(headers, secret);
   return verifyZernioSignature(raw, headers.get("x-zernio-signature"), secret);
 }
 
@@ -132,6 +144,14 @@ export function verifyInboundWebhookSignature(provider: string, raw: string, hea
 export async function inboundPayloadBelongsToSession(admin: SupabaseClient, input: InboundWebhookInput): Promise<boolean> {
   if (input.session.provider === CHANNEL_PROVIDER_SOCIAL) {
     return socialPayloadBelongsToSession(admin, input.session.organization_id, input.session.id, input.rawBody);
+  }
+  if (input.session.provider === CHANNEL_PROVIDER_EVOLUTION) {
+    // Um servidor Evolution serve várias organizações: o token escolhe a sessão,
+    // e o corpo só passa se disser a MESMA instância.
+    const leitura = lerEventoEvolution(input.rawBody);
+    if (!leitura.ok) return false;
+    const sessao = await sessaoEvolution(admin, input.session.organization_id, input.session.id);
+    return sessao !== null && sessao.instancia !== null && leitura.evento.instancia === sessao.instancia;
   }
   if (input.session.provider === CHANNEL_PROVIDER_ZERNIO) {
     const { evento, conta: contaDoEvento } = cabecalhoDoEventoZernio(input.rawBody);
@@ -194,6 +214,8 @@ export async function handleInboundWebhook(
       return zernioInbound(admin, input);
     case CHANNEL_PROVIDER_DATAFY:
       return datafyInbound(admin, input);
+    case CHANNEL_PROVIDER_EVOLUTION:
+      return evolutionInbound(admin, input);
     default:
       // Token de um canal que não entra por aqui. É configuração trocada, não
       // ataque — mas processar seria ler o payload com o parser errado.
@@ -454,4 +476,75 @@ async function datafyInbound(
   }
 
   return { ok: true, body: { received: eventos.length, outcomes: desfechos } };
+}
+
+/**
+ * A sessão Evolution como o banco a guarda: a instância e desde quando conecta.
+ *
+ * `connectedAt` é `last_status_change_at` SÓ quando o status é `WORKING` (a hora
+ * em que passou a funcionar, a mesma leitura de `canal-mudo.ts`); fora disso é
+ * null, e o ingest trata tudo como histórico.
+ */
+async function sessaoEvolution(
+  admin: SupabaseClient,
+  organizationId: string,
+  sessionId: string,
+): Promise<{ instancia: string | null; connectedAt: Date | null } | null> {
+  const { data, error } = await admin
+    .from("channel_sessions")
+    .select("evolution_instance_name, status, last_status_change_at")
+    .eq("organization_id", organizationId)
+    .eq("id", sessionId)
+    .maybeSingle();
+  if (error) throw new Error("evolution_session_lookup_failed");
+  if (!data) return null;
+  const row = data as {
+    evolution_instance_name?: string | null;
+    status?: string | null;
+    last_status_change_at?: string | null;
+  };
+  const desde = row.status === "WORKING" && row.last_status_change_at ? new Date(row.last_status_change_at) : null;
+  return {
+    instancia: row.evolution_instance_name ?? null,
+    connectedAt: desde && !Number.isNaN(desde.getTime()) ? desde : null,
+  };
+}
+
+/**
+ * Entrada da Evolution API. Fail-closed em tudo que decide a organização: sem
+ * segredo, segredo errado, ou instância do corpo diferente da sessão do token
+ * — nada é gravado. A guarda de instância repete a de
+ * `inboundPayloadBelongsToSession` porque esta função também é chamada fora da
+ * rota.
+ */
+async function evolutionInbound(
+  admin: SupabaseClient,
+  input: InboundWebhookInput,
+): Promise<InboundWebhookOutcome> {
+  if (!verifyEvolutionSecret(input.headers, input.secret)) {
+    return { ok: false, code: "unauthorized", message: "bad_signature" };
+  }
+  const leitura = lerEventoEvolution(input.rawBody);
+  if (!leitura.ok) {
+    if (leitura.motivo === "json_invalido") {
+      return { ok: false, code: "invalid_json", message: "invalid_json" };
+    }
+    return {
+      ok: false,
+      code: "contrato_violado",
+      message: `payload fora do contrato do canal: ${leitura.campos.join(", ")}`,
+    };
+  }
+  const sessao = await sessaoEvolution(admin, input.session.organization_id, input.session.id);
+  if (!sessao?.instancia || sessao.instancia !== leitura.evento.instancia) {
+    return { ok: true, body: { status: "ignored", reason: "outra_instancia" } };
+  }
+  const r = await ingestEvolutionEvento(admin, {
+    organizationId: input.session.organization_id,
+    channelSessionId: input.session.id,
+    connectedAt: sessao.connectedAt,
+    evento: leitura.evento,
+    apelido: input.session.display_name ?? input.session.phone_number ?? undefined,
+  });
+  return { ok: true, body: { ...r } };
 }

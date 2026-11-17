@@ -9661,5 +9661,13 @@
   "E-mail informado pelo cliente entra sozinho na ficha sem e-mail": "An email the client gives goes into a profile without email on its own",
   "Quando o cliente diz o e-mail numa conversa e a ficha do contato está SEM e-mail, ele é gravado na hora, sem esperar alguém confirmar — assim o convite do Google Agenda já sai para ele quando a reunião é marcada. Aparece na linha do tempo do contato quando ele tem um negócio aberto. Nunca troca o e-mail de quem já tem um, e um e-mail que já é de outro contato continua virando proposta. Vem desligada.": "When the client says their email in a conversation and the contact's profile has NO email, it is saved right away, without waiting for anyone to confirm — so the Google Calendar invite already goes to them when the meeting is booked. It shows on the contact's timeline when they have an open deal. It never replaces the email of someone who already has one, and an email that already belongs to another contact still becomes a proposal. Off by default.",
   "Ligado: o e-mail de um cadastro sem e-mail entra sozinho, e fica registrado na linha do tempo quando o contato tem um negócio aberto.": "On: the email of a record without email goes in on its own, and is logged on the timeline when the contact has an open deal.",
-  "Desligado: todo e-mail informado vira proposta, como o resto do dado ouvido na conversa.": "Off: every email given becomes a proposal, like the rest of the data heard in the conversation."
+  "Desligado: todo e-mail informado vira proposta, como o resto do dado ouvido na conversa.": "Off: every email given becomes a proposal, like the rest of the data heard in the conversation.",
+  "Conectar via Evolution": "Connect via Evolution",
+  "WhatsApp por QR Code": "WhatsApp by QR Code",
+  "Leia o QR Code no celular para conectar um número. As mensagens entram e saem pelo CRM.": "Scan the QR Code on your phone to connect a number. Messages come in and go out through the CRM.",
+  "No celular: WhatsApp → Aparelhos conectados → Conectar um aparelho. Aponte a câmera para o QR Code.": "On your phone: WhatsApp → Linked devices → Link a device. Point the camera at the QR Code.",
+  "Aguardando leitura do QR": "Waiting for QR scan",
+  "Iniciando": "Starting",
+  "Este número já está conectado em outra conexão.": "This number is already connected in another connection.",
+  "Não foi possível desconectar.": "Could not disconnect."
 }

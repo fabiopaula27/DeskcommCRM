@@ -125,6 +125,22 @@ export const CHANNEL_CAPABILITIES: Record<ProviderDeMensagem, ChannelCapabilitie
     // agenda de celular a ler, e dizer `true` aqui seria um botão que só falha.
     phonebook: false,
   },
+  // WhatsApp por QR/Baileys (Evolution API v2): mesma auto-restrição do WAHA —
+  // fala quando quiser, mas o número pode ser banido. v1 sem grupos, reação,
+  // edição/revogação, digitando, foto de perfil nem modelos.
+  evolution: {
+    freeformOutsideWindow: true,
+    requiresTemplates: false,
+    canManageTemplates: false,
+    banRisk: true,
+    minIntervalMs: null,
+    voiceNote: "server-convert",
+    groups: "none",
+    costPerMessage: false,
+    alteraMensagemEnviada: false,
+    // v1 não lê a agenda do aparelho (o adapter não tem `listPhonebook`).
+    phonebook: false,
+  },
 };
 
 /**
@@ -149,6 +165,12 @@ export const CHANNEL_PROVIDER_SOCIAL: ChannelProvider = "zernio_social";
 export const CHANNEL_PROVIDER_ZERNIO: ChannelProvider = "zernio";
 /** Parceiro que espelha a Cloud API — canal opcional da instalação, desligado por padrão. */
 export const CHANNEL_PROVIDER_DATAFY: ChannelProvider = "datafy";
+/** WhatsApp por QR (Evolution API) — canal opcional da instalação, por env. */
+export const CHANNEL_PROVIDER_EVOLUTION: ChannelProvider = "evolution";
+/** Pergunta pura (segura no browser) em vez de a tela escrever o provider. */
+export function ehProviderEvolution(provider: string | null | undefined): boolean {
+  return provider === CHANNEL_PROVIDER_EVOLUTION;
+}
 /** Chamada de voz WhatsApp (spec 18). Não transporta mensagem — ver abaixo. */
 export const CHANNEL_PROVIDER_WACALLS: ChannelProvider = "wacalls";
 
@@ -182,6 +204,7 @@ export const PROVIDERS_DE_MENSAGEM = [
   "zernio",
   "zernio_social",
   "datafy",
+  "evolution",
 ] as const satisfies readonly ProviderDeMensagem[];
 
 /**

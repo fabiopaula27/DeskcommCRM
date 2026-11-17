@@ -1,0 +1,38 @@
+{
+  "event": "messages.upsert",
+  "instance": "crm-teste",
+  "data": {
+    "key": {
+      "remoteJid": "5511999990001@s.whatsapp.net",
+      "fromMe": false,
+      "id": "3EB0A1B2C3D4E5F60004"
+    },
+    "pushName": "Contato Teste",
+    "status": "DELIVERY_ACK",
+    "message": {
+      "documentMessage": {
+        "url": "https://mmg.whatsapp.net/fake/doc.enc",
+        "mimetype": "application/pdf",
+        "title": "contrato.pdf",
+        "fileName": "contrato.pdf",
+        "fileLength": "8",
+        "pageCount": 1,
+        "directPath": "/v/fake/doc.enc",
+        "fileSha256": "ZmFrZXNoYQ==",
+        "mediaKey": "ZmFrZWtleQ==",
+        "fileEncSha256": "ZmFrZWVuYw==",
+        "mediaKeyTimestamp": "1763298000"
+      },
+      "base64": "JVBERi0xLjQKJSVFT0Y="
+    },
+    "messageType": "documentMessage",
+    "messageTimestamp": 1763298000,
+    "instanceId": "00000000-0000-4000-8000-000000000001",
+    "source": "android"
+  },
+  "destination": "https://crm.example.test/api/webhooks/evolution/abc123",
+  "date_time": "2026-11-16T10:00:00.000-03:00",
+  "sender": "5511999990000@s.whatsapp.net",
+  "server_url": "http://localhost:8085",
+  "apikey": "FAKE-INSTANCE-TOKEN-0001"
+}

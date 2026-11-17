@@ -301,6 +301,11 @@ const schema = z.object({
   // em `lib/channels/zernio/credentials.ts`, pelo resolvedor da instalação, a
   // cada chamada — nunca por `env.`, para a troca na tela valer na hora.
   ZERNIO_PLATFORM_API_KEY: z.string().optional().default(""),
+  // ─── Canal Evolution API (WhatsApp por QR) — OPCIONAL ───
+  // Qualquer das três vazia = a instalação não oferece o canal.
+  EVOLUTION_API_URL: z.string().optional().default(""),
+  EVOLUTION_API_KEY: z.string().optional().default(""),
+  EVOLUTION_WEBHOOK_BASE_URL: z.string().optional().default(""),
 
   // Upstash Redis
   UPSTASH_REDIS_REST_URL: required("UPSTASH_REDIS_REST_URL"),

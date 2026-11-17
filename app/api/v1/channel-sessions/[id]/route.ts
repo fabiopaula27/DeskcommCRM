@@ -28,6 +28,9 @@ import { loadAuthUser, mfaEmDivida } from "@/lib/auth/server";
 import { orgAtivaDaApi, requireRole } from "@/lib/auth/require-role";
 import { CHANNEL_PROVIDER_SOCIAL, CHANNEL_PROVIDER_WAHA } from "@/lib/channels/capabilities";
 import { PARTNER_CHANNEL_PROVIDER, desfazerNoProvedor } from "@/lib/channels/connect";
+import { canalEvolution } from "@/lib/channels";
+import { EvolutionConnectionError, desconectarEvolution } from "@/lib/channels/connect-evolution";
+import { createEvolutionClient } from "@/lib/channels/evolution/client";
 import { resolverSaudeDaConexaoRemovida } from "@/lib/channels/health";
 import { sincronizarAvisoDePausa } from "@/lib/channels/central-de-pausa";
 import { desfazerWebhookDoNumero } from "@/lib/channels/meta/webhook-override";
@@ -338,7 +341,7 @@ export async function DELETE(
   const { data: session } = await supabase
     .from("channel_sessions")
     .select(
-      "id, provider, waha_session_name, display_name, phone_number, meta_phone_number_id, meta_token_encrypted, zernio_credencial_da_instalacao",
+      "id, provider, waha_session_name, evolution_instance_name, display_name, phone_number, meta_phone_number_id, meta_token_encrypted, zernio_credencial_da_instalacao",
     )
     .eq("organization_id", activeOrg.orgId)
     .eq("id", id)
@@ -390,6 +393,15 @@ export async function DELETE(
       await supabase.from("channel_sessions").update({ status: "FAILED", status_reason: "connection_repair_required", last_status_change_at: now })
         .eq("organization_id", activeOrg.orgId).eq("id", id);
       return fail("waha_error", wahaFriendlyError(err), 502, { requestId });
+    }
+  } else if (canalEvolution(session)) {
+    // Encerra a instância ANTES de arquivar: se o servidor de QR falhar, a linha
+    // fica como está — arquivar com o número ainda pareado seria vivo e surdo.
+    try {
+      await desconectarEvolution(createEvolutionClient(), session);
+    } catch (err) {
+      const e = err instanceof EvolutionConnectionError ? err : new EvolutionConnectionError("evolution_indisponivel", 502);
+      return fail(e.code, t("Não foi possível desconectar o número do aparelho. Tente novamente."), e.status, { requestId });
     }
   } else if (session.provider === CHANNEL_PROVIDER_SOCIAL) {
     // ─── A ASSINATURA NÃO FICA ÓRFÃ NO ZERNIO (issue #2419) ───────────────────

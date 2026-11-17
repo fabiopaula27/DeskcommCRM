@@ -3,6 +3,7 @@
  * pede o adapter do provider da conversa e o descritor de capabilities.
  */
 import { datafyAdapter } from "./adapters/datafy";
+import { evolutionAdapter } from "./adapters/evolution";
 import { metaCloudAdapter } from "./adapters/meta-cloud";
 import { wahaAdapter } from "./adapters/waha";
 import { socialAdapter } from "./social/adapter";
@@ -19,6 +20,7 @@ const ADAPTERS: Record<ProviderDeMensagem, ChannelAdapter | null> = {
   zernio: zernioAdapter,
   zernio_social: socialAdapter,
   datafy: datafyAdapter,
+  evolution: evolutionAdapter,
 };
 
 /**
@@ -52,6 +54,7 @@ export {
   canalConhecidoSemMensagem,
   transportaMensagem,
 } from "./capabilities";
+export { canalEvolution } from "./connect-evolution";
 export { CHANNEL_SESSION_REF_COLUMNS, resolveSessionRef } from "./session-ref";
 export type { ChannelSessionRef } from "./session-ref";
 export type {

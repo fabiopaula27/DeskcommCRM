@@ -5983,5 +5983,13 @@
   "Escrita": "写入",
   "Leitura": "读取",
   "Não foi possível falar com o servidor.": "无法连接服务器。",
-  "O link de autorização é automático: enquanto o cliente não autorizar, o agente recebe sozinho a ferramenta que gera o link. Não é preciso marcá-la aqui.": "授权链接是自动的：在客户授权之前，智能体会自动获得生成链接的工具，无需在此选择。"
+  "O link de autorização é automático: enquanto o cliente não autorizar, o agente recebe sozinho a ferramenta que gera o link. Não é preciso marcá-la aqui.": "授权链接是自动的：在客户授权之前，智能体会自动获得生成链接的工具，无需在此选择。",
+  "Conectar via Evolution": "通过 Evolution 连接",
+  "WhatsApp por QR Code": "二维码 WhatsApp",
+  "Leia o QR Code no celular para conectar um número. As mensagens entram e saem pelo CRM.": "用手机扫描二维码以连接号码。消息通过 CRM 收发。",
+  "No celular: WhatsApp → Aparelhos conectados → Conectar um aparelho. Aponte a câmera para o QR Code.": "在手机上：WhatsApp → 已关联的设备 → 关联设备。将相机对准二维码。",
+  "Aguardando leitura do QR": "等待扫描二维码",
+  "Iniciando": "正在启动",
+  "Este número já está conectado em outra conexão.": "此号码已在另一个连接中使用。",
+  "Não foi possível desconectar.": "无法断开连接。"
 }

@@ -22,10 +22,15 @@ const ROTAS = [
   "app/api/v1/channels/partner/route.ts",
   "app/api/v1/channels/social/route.ts",
   "app/api/v1/channels/graph-partner/route.ts",
+  "app/api/v1/channels/evolution/route.ts",
 ] as const;
 
 /** Onde o erro do banco era EMBRULHADO antes de chegar à rota — e o número se perdia. */
-const EMBRULHAVAM = ["lib/channels/connect-waha.ts", "lib/channels/social/store.ts"] as const;
+const EMBRULHAVAM = [
+  "lib/channels/connect-waha.ts",
+  "lib/channels/social/store.ts",
+  "lib/channels/connect-evolution.ts",
+] as const;
 
 describe("o limite de números do plano chega à tela por toda porta", () => {
   it.each(ROTAS)("%s traduz a recusa do gatilho", (rota) => {
