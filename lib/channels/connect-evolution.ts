@@ -384,9 +384,9 @@ async function perdeuACorrida(admin: SupabaseClient, id: string, formas: string[
   const linhas = (data ?? []) as Array<{ id: string; last_status_change_at: string | null }>;
   const eu = linhas.find((l) => l.id === id);
   if (!eu) return false;
-  const t = (l: { last_status_change_at: string | null }) =>
+  const instante = (l: { last_status_change_at: string | null }) =>
     l.last_status_change_at ? new Date(l.last_status_change_at).getTime() : Number.POSITIVE_INFINITY;
-  return linhas.some((o) => o.id !== id && (t(o) < t(eu) || (t(o) === t(eu) && o.id < id)));
+  return linhas.some((o) => o.id !== id && (instante(o) < instante(eu) || (instante(o) === instante(eu) && o.id < id)));
 }
 
 /** O número já atende em outro canal ativo: derruba ESTA instância, nunca a outra. */

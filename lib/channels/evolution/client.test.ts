@@ -49,7 +49,7 @@ describe("createEvolutionClient", () => {
       webhook: {
         url: "https://c/w/tok",
         base64: true,
-        headers: { "x-deskcomm-webhook-secret": "sec" },
+        headers: { "x-webhook-secret": "sec" },
         events: ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "CONNECTION_UPDATE", "QRCODE_UPDATED"],
       },
     });

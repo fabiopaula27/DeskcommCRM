@@ -42,7 +42,7 @@ import { createEvolutionClient } from "./client";
 import { evolutionConfigurado } from "./credentials";
 import type { EvolutionEvento } from "./webhook";
 
-export const HEADER_SEGREDO_EVOLUTION = "x-deskcomm-webhook-secret";
+export const HEADER_SEGREDO_EVOLUTION = "x-webhook-secret";
 const MIN_SECRET_LEN = 16;
 const BUCKET = "whatsapp-media";
 

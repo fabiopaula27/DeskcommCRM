@@ -40,7 +40,7 @@ function corpo(instance: string, id = "WA1"): string {
     },
   });
 }
-const headers = (s: string) => new Headers({ "x-deskcomm-webhook-secret": s });
+const headers = (s: string) => new Headers({ "x-webhook-secret": s });
 
 let db: FakeDb;
 beforeEach(() => {

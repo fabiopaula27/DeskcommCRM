@@ -52,7 +52,7 @@ beforeEach(() => {
 
 describe("verifyEvolutionSecret", () => {
   const SEGREDO = "s".repeat(24);
-  const h = (v?: string) => new Headers(v === undefined ? {} : { "x-deskcomm-webhook-secret": v });
+  const h = (v?: string) => new Headers(v === undefined ? {} : { "x-webhook-secret": v });
   it("aceita o header igual ao segredo da sessão", () => {
     expect(verifyEvolutionSecret(h(SEGREDO), SEGREDO)).toBe(true);
   });

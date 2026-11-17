@@ -119,7 +119,7 @@ export function createEvolutionClient(cfg?: {
           url: webhookUrl,
           byEvents: false,
           base64: true,
-          headers: { "x-deskcomm-webhook-secret": webhookSecret },
+          headers: { "x-webhook-secret": webhookSecret },
           events: [...EVOLUTION_EVENTOS],
         },
       });

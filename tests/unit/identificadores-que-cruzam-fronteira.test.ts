@@ -188,6 +188,8 @@ const SITES: { arquivo: string; fronteira: string; papel?: "gerador" | "validado
   // o handler. A chave é a de antes: `{org}/templates/{uuid}.{jpg|png}`, com a
   // extensão vinda da ASSINATURA dos bytes.
   { arquivo: "lib/channels/templates-midia.ts", fronteira: "storage.chave-de-objeto" },
+  // A mídia recebida pela Evolution: `{org}/{conversa}/{mensagem}.{ext}` — ids internos, nada do provedor.
+  { arquivo: "lib/channels/evolution/ingest.ts", fronteira: "storage.chave-de-objeto" },
   // A nota de voz do agente (`uploadDeVoz`): `{org}/{conversa}/voz-agente-{jobId}-{seq}.mp3`
   // — org e conversa do turno, jobId uuid da fila, seq inteiro do turno. Nada de
   // texto do cliente nem do modelo entra na chave.
@@ -222,6 +224,7 @@ const SITES: { arquivo: string; fronteira: string; papel?: "gerador" | "validado
   { arquivo: "lib/extensions/http.ts", fronteira: "api.idempotency-key", papel: "validador" },
   { arquivo: "app/api/v1/admin/tenants/route.ts", fronteira: "api.idempotency-key", papel: "validador" },
   { arquivo: "app/api/v1/channel-sessions/route.ts", fronteira: "api.idempotency-key", papel: "validador" },
+  { arquivo: "app/api/v1/channels/evolution/route.ts", fronteira: "api.idempotency-key", papel: "validador" },
   { arquivo: "app/api/v1/lgpd/requests/[id]/approve/route.ts", fronteira: "api.idempotency-key", papel: "validador" },
   { arquivo: "app/api/v1/onboarding/whatsapp/session/route.ts", fronteira: "api.idempotency-key", papel: "validador" },
 ];

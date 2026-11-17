@@ -40,6 +40,16 @@ import { TEXTOS_AGENDA_SERVICOS } from "./agenda-servicos";
 type Traducoes = Record<string, Partial<Record<Exclude<Idioma, "pt-BR">, string>>>;
 
 export const DICIONARIO: Traducoes = {
+  "Aguardando leitura do QR": { es: "Esperando la lectura del QR" },
+  Iniciando: { es: "Iniciando" },
+  "Não foi possível iniciar a conexão.": { es: "No fue posible iniciar la conexión." },
+  "Não foi possível reconectar.": { es: "No fue posible reconectar." },
+  "Não foi possível desconectar.": { es: "No fue posible desconectar." },
+  "WhatsApp por QR Code": { es: "WhatsApp por código QR" },
+  "Leia o QR Code no celular para conectar um número. As mensagens entram e saem pelo CRM.": { es: "Escanea el código QR en el celular para conectar un número. Los mensajes entran y salen por el CRM." },
+  "Conectar via Evolution": { es: "Conectar vía Evolution" },
+  "No celular: WhatsApp → Aparelhos conectados → Conectar um aparelho. Aponte a câmera para o QR Code.": { es: "En el celular: WhatsApp → Dispositivos vinculados → Vincular un dispositivo. Apunta la cámara al código QR." },
+  "Este número já está conectado em outra conexão.": { es: "Este número ya está conectado en otra conexión." },
   // Servidores MCP por agente e OAuth por contato (migration 9095).
   "O link de autorização é automático: enquanto o cliente não autorizar, o agente recebe sozinho a ferramenta que gera o link. Não é preciso marcá-la aqui.": { es: "El enlace de autorización es automático: mientras el cliente no autorice, el agente recibe por sí solo la herramienta que genera el enlace. No hace falta marcarla aquí." },
   "0 = o acesso é revogado assim que a conversa é encerrada.": { es: "0 = el acceso se revoca en cuanto se cierra la conversación." },
