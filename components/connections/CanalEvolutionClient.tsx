@@ -12,6 +12,8 @@ import { ehProviderEvolution } from "@/lib/channels/capabilities";
 import { randomId } from "@/lib/random-id";
 import { ArrowsClockwise, CheckCircle, CircleNotch, Trash } from "@/lib/ui/icons";
 
+import { ChannelAiAccess } from "./ChannelAiAccess";
+
 /**
  * Conectar um número por QR pelo servidor Evolution da instalação.
  *
@@ -230,6 +232,10 @@ export function CanalEvolutionClient({ isConfigured }: { isConfigured: boolean }
               {t("Este número já está conectado em outra conexão.")}
             </p>
           )}
+          {/* Mesmo controle dos outros canais: todo número nasce em modo de
+              teste, e é aqui que se cadastram os números de teste ou se abre a
+              IA ao público. */}
+          <ChannelAiAccess channelId={s.id} />
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={ocupado === s.id} onClick={() => void reconectar(s)}>
               <ArrowsClockwise size={14} aria-hidden />

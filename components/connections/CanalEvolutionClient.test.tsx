@@ -7,6 +7,11 @@ const h = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), del: vi.fn() }));
 vi.mock("@/lib/api/client", () => ({ apiClient: { get: h.get, post: h.post, delete: h.del } }));
 vi.mock("@/hooks/i18n/useT", () => ({ useT: () => (value: string) => value }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+// O controle de acesso da IA tem teste próprio; aqui só importa que ele é
+// montado para cada número, com o id da conexão.
+vi.mock("./ChannelAiAccess", () => ({
+  ChannelAiAccess: ({ channelId }: { channelId: string }) => <div data-testid="acesso-ia">{channelId}</div>,
+}));
 
 let sessoes: Array<Record<string, unknown>> = [];
 let qrAtual = "QR1";
@@ -102,6 +107,13 @@ it("numero_em_uso mostra a mensagem em português", async () => {
   render(<CanalEvolutionClient isConfigured />);
   await avancar(0);
   expect(screen.getByText("Este número já está conectado em outra conexão.")).toBeTruthy();
+});
+
+it("cada número tem o controle de acesso da IA (modo de teste / aberta ao público)", async () => {
+  sessoes = [sessao("WORKING")];
+  render(<CanalEvolutionClient isConfigured />);
+  await avancar(0);
+  expect(screen.getByTestId("acesso-ia").textContent).toBe("s1");
 });
 
 it("Reconectar e Desconectar chamam as rotas", async () => {
