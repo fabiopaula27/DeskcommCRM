@@ -43,6 +43,12 @@ import { evolutionConfigurado } from "./credentials";
 import type { EvolutionEvento } from "./webhook";
 
 export const HEADER_SEGREDO_EVOLUTION = "x-webhook-secret";
+/**
+ * Nome com que as primeiras instâncias foram criadas. A instância guarda o
+ * header no servidor Evolution e continua mandando este nome até ser
+ * reconectada: sem aceitá-lo, o número já pareado ficaria mudo após o deploy.
+ */
+export const HEADER_SEGREDO_EVOLUTION_LEGADO = "x-deskcomm-webhook-secret";
 const MIN_SECRET_LEN = 16;
 const BUCKET = "whatsapp-media";
 
@@ -53,7 +59,7 @@ type Mensagem = Extract<EvolutionEvento, { tipo: "mensagem" }>;
 /** Header = segredo da sessão, em tempo constante. Segredo curto = recusa. */
 export function verifyEvolutionSecret(headers: Headers, secret: string | null): boolean {
   if (!secret || secret.length < MIN_SECRET_LEN) return false;
-  const recebido = headers.get(HEADER_SEGREDO_EVOLUTION);
+  const recebido = headers.get(HEADER_SEGREDO_EVOLUTION) ?? headers.get(HEADER_SEGREDO_EVOLUTION_LEGADO);
   if (!recebido) return false;
   const a = Buffer.from(recebido);
   const b = Buffer.from(secret);

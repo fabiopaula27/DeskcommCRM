@@ -215,6 +215,12 @@ const MARCA_CONGELADA: Record<string, EntradaDeMarca> = {
       "`agent_name_hint` identifica o aplicativo auto-hospedado durante a autorização SIWC da OpenAI; não é o nome apresentado nas telas do CRM. O fluxo de login depende deste identificador de produto.",
     marcas: ["deskcommcrm"],
   },
+  "lib/channels/evolution/ingest.ts": {
+    categoria: "PROTOCOLO",
+    motivo:
+      "header de segredo com que as primeiras instâncias da Evolution foram criadas. O servidor Evolution guarda o nome e segue enviando até a instância ser reconectada; deixar de aceitar deixa o número já pareado mudo. Instâncias novas usam `x-webhook-secret`",
+    marcas: ["x-deskcomm-webhook-secret"],
+  },
   "lib/webhooks/assinatura.ts": {
     categoria: "PROTOCOLO",
     motivo:

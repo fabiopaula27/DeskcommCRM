@@ -23,7 +23,7 @@ import { MAX_MEDIA_BYTES } from "@/lib/messaging/media/types";
 import { sincronizarSaudeDaConexao } from "@/lib/channels/health";
 
 import { criarFakeDb, type FakeDb } from "./__fixtures__/fake-admin";
-import { ingestEvolutionEvento, verifyEvolutionSecret } from "./ingest";
+import { HEADER_SEGREDO_EVOLUTION_LEGADO, ingestEvolutionEvento, verifyEvolutionSecret } from "./ingest";
 import type { EvolutionEvento } from "./webhook";
 
 const CONECTADO = new Date("2026-11-17T10:00:00Z");
@@ -62,6 +62,12 @@ describe("verifyEvolutionSecret", () => {
     expect(verifyEvolutionSecret(h(SEGREDO + "x"), SEGREDO)).toBe(false);
     expect(verifyEvolutionSecret(h("curto"), "curto")).toBe(false);
     expect(verifyEvolutionSecret(h(SEGREDO), null)).toBe(false);
+  });
+  it("aceita o header legado de instâncias criadas antes da troca de nome", () => {
+    const legado = new Headers({ [HEADER_SEGREDO_EVOLUTION_LEGADO]: SEGREDO });
+    expect(verifyEvolutionSecret(legado, SEGREDO)).toBe(true);
+    const legadoErrado = new Headers({ [HEADER_SEGREDO_EVOLUTION_LEGADO]: "x".repeat(24) });
+    expect(verifyEvolutionSecret(legadoErrado, SEGREDO)).toBe(false);
   });
 });
 
