@@ -417,7 +417,8 @@ export function createPgAdminClient(pool: pg.Pool): TurnBridgeAdminClient {
     loadRenderContext: (orgId, contactId) => contextoDoContato(pool, orgId, contactId),
     async loadLastInboundBody(orgId, contactId, conversationId, naoAntesDe) {
       const params: unknown[] = [orgId, contactId, conversationId ?? null];
-      const desde = naoAntesDe ? "and sent_at >= $4" : "";
+      // As DUAS marcas — ver o adaptador do Supabase em `engine.ts`.
+      const desde = naoAntesDe ? "and sent_at >= $4 and created_at >= $4" : "";
       if (naoAntesDe) params.push(naoAntesDe);
       const { rows } = await pool.query<{ body: string | null }>(
         `select body from messages

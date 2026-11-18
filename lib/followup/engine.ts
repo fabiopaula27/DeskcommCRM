@@ -1525,7 +1525,9 @@ export function createSupabaseAdminClient(admin: SupabaseClient): AdminClient {
         // #2815: a reação (👍) é inbound sem `body` — se contasse, esconderia o "SIM" que ela segue.
         .neq("type", "reaction");
       if (conversationId) q = q.eq("conversation_id", conversationId);
-      if (naoAntesDe) q = q.gte("sent_at", naoAntesDe);
+      // As DUAS marcas: o `sent_at` do WhatsApp pode estar segundos à frente do
+      // servidor, e a resposta da pergunta anterior passava pelo piso da seguinte.
+      if (naoAntesDe) q = q.gte("sent_at", naoAntesDe).gte("created_at", naoAntesDe);
       const { data, error } = await q.order("sent_at", { ascending: false }).limit(1).maybeSingle();
       if (error) throw new Error(error.message);
       return typeof data?.body === "string" ? data.body : null;

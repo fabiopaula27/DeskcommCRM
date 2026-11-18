@@ -3,7 +3,7 @@ import { idsDoContatoEGemeos } from "@/lib/channels/contato-por-telefone";
 import { drainEventLog } from "@/lib/event-log/drain";
 import { ensureHandlersRegistered } from "@/lib/event-log/register-handlers";
 import { createSupabaseFollowupGateDb } from "@/lib/followup/agent-followup-gate";
-import { inboundEhDestaPergunta } from "@/lib/followup/aplicar-inbound";
+import { inboundEhDestaPergunta, instanteDaMensagem } from "@/lib/followup/aplicar-inbound";
 import {
   aplicarRespostaInbound,
   createSupabaseAdminClient,
@@ -83,7 +83,7 @@ export async function aplicarRespostasQueChegaram(admin: SupabaseClient, deps: T
     const ids = await idsDoContatoEGemeos(admin, enrollment.organization_id, enrollment.contact_id);
     const { data: msg, error: msgErr } = await admin
       .from("messages")
-      .select("body, sent_at")
+      .select("body, sent_at, created_at")
       .eq("organization_id", enrollment.organization_id)
       .in("contact_id", ids)
       .eq("direction", "inbound")
@@ -93,7 +93,7 @@ export async function aplicarRespostasQueChegaram(admin: SupabaseClient, deps: T
     if (msgErr) throw new Error(msgErr.message);
     const texto = typeof msg?.body === "string" ? msg.body.trim() : "";
     if (!texto) continue;
-    const enviada = typeof msg?.sent_at === "string" ? msg.sent_at : "";
+    const enviada = instanteDaMensagem(msg?.sent_at, (msg as { created_at?: unknown } | null)?.created_at) ?? "";
     if (enviada && !inboundEhDestaPergunta(enviada, enrollment.updated_at)) continue;
     await aplicarRespostaInbound(deps, enrollment, texto);
     n++;

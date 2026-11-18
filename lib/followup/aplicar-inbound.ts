@@ -55,7 +55,26 @@ function tickDepsDe(admin: SupabaseClient): TickDeps {
  * em `waiting_reply` (confirmação de nome, pergunta de endereço, etc.).
  */
 export function inboundEhDestaPergunta(enviadaEm: string, esperaDesde: string): boolean {
-  return enviadaEm >= esperaDesde;
+  // Instante, não texto: `+00:00` contra `Z`, e segundo inteiro contra milissegundo,
+  // decidiam a comparação pela forma da string.
+  const a = Date.parse(enviadaEm);
+  const b = Date.parse(esperaDesde);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return enviadaEm >= esperaDesde;
+  return a >= b;
+}
+
+/**
+ * O instante que vale para "esta mensagem é resposta desta pergunta?": o MAIS
+ * CEDO entre o horário do WhatsApp (`sent_at`) e o da gravação no servidor
+ * (`created_at`). O do WhatsApp pode estar segundos à frente do relógio do
+ * servidor — e aí a resposta da pergunta anterior parecia posterior ao início
+ * da pergunta seguinte. O da gravação sozinho erraria no histórico importado
+ * (gravado agora, enviado há dias). O mais cedo dos dois erra para o lado seguro.
+ */
+export function instanteDaMensagem(sentAt: unknown, createdAt: unknown): string | null {
+  const ok = (v: unknown): v is string => typeof v === "string" && Number.isFinite(Date.parse(v));
+  if (ok(sentAt) && ok(createdAt)) return Date.parse(sentAt) <= Date.parse(createdAt) ? sentAt : createdAt;
+  return ok(sentAt) ? sentAt : ok(createdAt) ? createdAt : null;
 }
 
 type InboundResolvido = { texto: string; enviadaEm: string | null };
@@ -67,7 +86,7 @@ async function ultimoInboundDoContato(
 ): Promise<InboundResolvido> {
   const { data, error } = await admin
     .from("messages")
-    .select("body, sent_at")
+    .select("body, sent_at, created_at")
     .eq("organization_id", orgId)
     .in("contact_id", contactIds)
     .eq("direction", "inbound")
@@ -76,7 +95,7 @@ async function ultimoInboundDoContato(
     .maybeSingle();
   if (error) throw new Error(error.message);
   const texto = typeof data?.body === "string" ? data.body.trim() : "";
-  const enviadaEm = typeof data?.sent_at === "string" ? data.sent_at : null;
+  const enviadaEm = instanteDaMensagem(data?.sent_at, (data as { created_at?: unknown } | null)?.created_at);
   return { texto, enviadaEm };
 }
 
@@ -87,6 +106,7 @@ async function aplicarTextoAosEnrollmentsEmEspera(
   texto: string,
   enviadaEm: string | null,
   deps: TickDeps,
+  jaRespondidas: Set<string>,
 ): Promise<number> {
   const { data, error } = await admin
     .from("followup_enrollments")
@@ -101,6 +121,13 @@ async function aplicarTextoAosEnrollmentsEmEspera(
     // Sem sent_at não dá pra saber se a mensagem é desta pergunta — fail-closed
     // (igual ao relógio): não avança com texto velho.
     if (!enviadaEm || !inboundEhDestaPergunta(enviadaEm, enrollment.updated_at)) continue;
+    // UMA mensagem responde UMA pergunta. O laço abaixo roda até 6 vezes no
+    // mesmo request: a resposta "3" do menu levava o fluxo à pergunta seguinte,
+    // que entrava em `waiting_reply` e, na volta seguinte do laço, recebia o
+    // MESMO "3" — bastava o relógio do WhatsApp estar alguns segundos à frente
+    // do servidor para a guarda de horário acima deixar passar.
+    if (jaRespondidas.has(enrollment.id)) continue;
+    jaRespondidas.add(enrollment.id);
     await aplicarRespostaInbound(deps, enrollment, texto);
     aplicados++;
   }
@@ -175,6 +202,7 @@ export async function aplicarTextoNosFollowups(
   // Apply dentro do loop (não numa 2ª passada cega): a mensagem que ENFILEIROU
   // a confirmação de nome não pode responder a essa confirmação no mesmo request.
   // `inboundEhDestaPergunta` exige sent_at >= updated_at do waiting_reply.
+  const jaRespondidas = new Set<string>();
   for (let i = 0; i < 6; i++) {
     const aplicados = await aplicarTextoAosEnrollmentsEmEspera(
       admin,
@@ -183,6 +211,7 @@ export async function aplicarTextoNosFollowups(
       texto,
       enviadaEm,
       deps,
+      jaRespondidas,
     );
     const agora = new Date().toISOString();
     const { data: vivos, error: vivosErr } = await admin
