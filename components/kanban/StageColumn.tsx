@@ -147,6 +147,16 @@ export function StageColumn({
   const accentStyle: CSSProperties | undefined = stage.color
     ? { backgroundColor: stage.color }
     : undefined;
+  // Etapa COM cor: cabeçalho inteiro na cor, texto branco, e o corpo da coluna
+  // num tom bem claro da mesma cor (sufixo hex de alfa ~10%). Sem cor, o quadro
+  // fica exatamente como sempre foi.
+  const corDaEtapa = stage.color && /^#[0-9a-fA-F]{6}$/.test(stage.color) ? stage.color : null;
+  const estiloDaColuna: CSSProperties | undefined = corDaEtapa
+    ? { backgroundColor: `${corDaEtapa}1A`, borderColor: `${corDaEtapa}40` }
+    : undefined;
+  const estiloDoCabecalho: CSSProperties | undefined = corDaEtapa
+    ? { backgroundColor: corDaEtapa, borderColor: corDaEtapa }
+    : undefined;
 
   return (
     <div
@@ -166,6 +176,7 @@ export function StageColumn({
         sempre, onde a graça é justamente ver várias etapas ao mesmo tempo.
       */
       className="bg-surface-elevated/40 flex min-h-full w-[85vw] max-w-80 shrink-0 snap-center flex-col rounded-lg border border-border md:w-80"
+      style={estiloDaColuna}
       data-etapa-do-quadro={stage.id}
     >
       {/* Cabeçalho e total PRESOS no alto do quadro enquanto os cards rolam: com
@@ -181,9 +192,17 @@ export function StageColumn({
           junto com o cabeçalho preso. */}
       <div
         className="sticky top-0 z-10 -mx-px -mt-px rounded-t-lg border-x border-t border-border bg-background"
+        style={estiloDoCabecalho}
         data-cabecalho-da-etapa
       >
-        <div className="bg-surface-elevated/40 rounded-t-lg">
+        <div
+          className={cn(
+            "rounded-t-lg",
+            corDaEtapa
+              ? "text-white [&_h2]:!text-white [&_.text-text-muted]:!text-white/85 [&_.border-border]:!border-white/25 [&_input[type=text]]:!text-text"
+              : "bg-surface-elevated/40",
+          )}
+        >
           <div className="group/etapa flex items-center gap-2 border-b border-border px-3 py-2.5">
             {/* "Selecionar a etapa inteira" é o gesto que faz a ação em lote valer a
             pena: sem ele, mover trinta cards deixa de ser trinta arrastes e vira
@@ -221,8 +240,8 @@ export function StageColumn({
               />
             )}
             <span
-              className={cn("h-2 w-2 rounded-full", !stage.color && "bg-text-muted/40")}
-              style={accentStyle}
+              className={cn("h-2 w-2 rounded-full", !stage.color && "bg-text-muted/40", corDaEtapa && "bg-white/80")}
+              style={corDaEtapa ? undefined : accentStyle}
               aria-hidden
             />
             {podeRenomear && onRenomear ? (
@@ -238,7 +257,12 @@ export function StageColumn({
             ) : (
               <h2 className="flex-1 truncate text-sm font-semibold text-text">{stage.name}</h2>
             )}
-            <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-medium text-text-muted tabular-nums">
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums",
+                corDaEtapa ? "bg-white/25 text-white" : "bg-surface text-text-muted",
+              )}
+            >
               {selecionadosAqui > 0 ? `${selecionadosAqui}/${leads.length}` : leads.length}
             </span>
           </div>

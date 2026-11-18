@@ -87,7 +87,7 @@ export function SeletorDeCorDaEtapa({
           <button
             type="button"
             onClick={() => escolher(null)}
-            className="mt-2 w-full rounded px-2 py-1 text-left text-xs text-text-muted hover:bg-surface-elevated"
+            className="mt-2 w-full rounded-md px-2 py-1 text-left text-xs text-text-muted hover:bg-surface-elevated"
           >
             {t("Sem cor")}
           </button>

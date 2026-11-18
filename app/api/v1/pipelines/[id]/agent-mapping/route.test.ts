@@ -285,6 +285,7 @@ describe("GET /api/v1/pipelines/[id]/agent-mapping", () => {
       // tela de etapas nasceria sempre com o campo vazio e gravaria por cima
       // da configuração. Ausente na fixture = etapa sem janela = null.
       expected_duration_hours: null,
+      color: null,
       last_change_actor_kind: null,
       last_change_at: null,
       // #3603: a lista de fluxos armados por etapa viaja na MESMA leitura — a

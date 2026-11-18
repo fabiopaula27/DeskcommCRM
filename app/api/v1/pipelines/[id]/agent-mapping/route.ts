@@ -95,6 +95,8 @@ type EtapaComAutoria = EtapaDoMapa & {
    * `null` = a etapa não configurou e o radar usa o padrão de 24 h/72 h.
    */
   expected_duration_hours?: number | null;
+  /** Cor da coluna (`#rrggbb`); a tela de etapas a edita e lê daqui. */
+  color?: string | null;
   last_change_actor_kind: string | null;
   last_change_at: string | null;
 };
@@ -119,7 +121,7 @@ async function lerFunil(
     // consulta só para ela seria um round-trip por render numa tela de
     // configuração — e um caminho a mais para a lista e a autoria divergirem.
     .select(
-      "id, name, is_won, is_lost, win_probability, agent_stage_hint, avisar_na_central, expected_duration_hours, last_change_actor_kind, last_change_at",
+      "id, name, is_won, is_lost, win_probability, agent_stage_hint, avisar_na_central, expected_duration_hours, color, last_change_actor_kind, last_change_at",
     )
     .eq("organization_id", orgId)
     .eq("pipeline_id", pipelineId)
@@ -165,6 +167,7 @@ function corpo(etapas: EtapaComAutoria[], fluxos: FluxosPorEtapa | null) {
       // a edita, e sem ela aqui o campo nasceria sempre vazio — uma edição
       // apagaria a configuração gravada sem ninguém perceber.
       expected_duration_hours: e.expected_duration_hours ?? null,
+      color: e.color ?? null,
       last_change_actor_kind: e.last_change_actor_kind ?? null,
       last_change_at: e.last_change_at ?? null,
     })),
