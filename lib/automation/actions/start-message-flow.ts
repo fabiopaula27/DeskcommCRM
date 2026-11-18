@@ -210,6 +210,19 @@ export async function executeStartMessageFlow(
     return { type: TYPE, status: "failed", error: result.message, detail: { code: result.code } };
   }
 
+  // O fluxo anda AGORA, não na próxima passada do relógio. Sem isto, o gatilho
+  // esperava um tick (1 min) e a primeira mensagem outro (mais 1 min): o lead
+  // que acabou de escrever ficava 2 min sem resposta. É o mesmo atalho que a
+  // resposta do lead e o gatilho de retorno já usam: avança os passos que não
+  // esperam nada e envia o texto fixo neste request. Falhar aqui não desfaz a
+  // inscrição — o relógio continua sendo a rede de baixo.
+  try {
+    const { avancarFollowupsAtivosDoContato } = await import("@/lib/followup/aplicar-inbound");
+    await avancarFollowupsAtivosDoContato(ctx.admin, ctx.organizationId, contactId);
+  } catch {
+    // o tick de 1 minuto avança do mesmo jeito
+  }
+
   return {
     type: TYPE,
     status: "success",
