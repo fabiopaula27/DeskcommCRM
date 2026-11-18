@@ -115,6 +115,8 @@ export interface EnrollmentEventRef {
   idempotency_key: string | null;
   event_type?: string | null;
   payload?: Record<string, unknown> | null;
+  /** Relógio do BANCO — o mesmo de `messages.created_at`. */
+  created_at?: string | null;
 }
 
 export type NodeResult =
@@ -421,6 +423,11 @@ export function pisoDoInboundDaEspera(
     const e = events[i]!;
     if (e.node_id !== node.id) continue;
     if (e.event_type !== "wait_started") continue;
+    // O instante em que a espera foi GRAVADA, pelo relógio do banco: é o mesmo
+    // relógio de `messages.created_at`. O `next_eval_at` vem do relógio do
+    // servidor da aplicação, e uma VPS alguns segundos atrás do banco fazia a
+    // resposta da pergunta anterior parecer posterior a esta.
+    if (typeof e.created_at === "string" && Number.isFinite(Date.parse(e.created_at))) return e.created_at;
     const next = e.payload?.next_eval_at;
     if (typeof next !== "string") break;
     const start = Date.parse(next) - node.config.grace_timeout_ms;

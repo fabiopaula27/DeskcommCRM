@@ -53,7 +53,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { EventRow } from "@/lib/event-log/dispatcher";
-import { inboundEhDestaPergunta, instanteDaMensagem } from "@/lib/followup/aplicar-inbound";
+import {
+  inboundEhDestaPergunta,
+  inicioDaEsperaNoBanco,
+  instanteDaMensagem,
+  pisoDaPergunta,
+} from "@/lib/followup/aplicar-inbound";
 import type { EnrollmentPatch } from "./engine";
 import { triggerConfigSchema } from "./api-schemas";
 import type { EnrollmentOutcome, EnrollmentStatus } from "./node-handlers";
@@ -163,6 +168,8 @@ export interface ReactivityAdminClient {
    * não é exprimível pelo client. Daí a leitura explícita.
    */
   agoraNoBanco(): Promise<string>;
+  /** `created_at` (relógio do banco) do último `wait_started` do nó. Opcional: falsos de teste omitem. */
+  inicioDaEspera?(orgId: string, enrollmentId: string, nodeId: string): Promise<string | null>;
 }
 
 export interface ReactivitySummary {
@@ -362,8 +369,9 @@ async function acordarPorInbound(
   // O mais cedo entre o carimbo do WhatsApp e o da gravação: o do WhatsApp pode
   // vir segundos à frente do servidor (ver `instanteDaMensagem`).
   const enviadaEm = instanteDaMensagem(strOrNull(row.payload.sent_at), row.created_at ?? null);
-  if (enviadaEm && e.updated_at && !inboundEhDestaPergunta(enviadaEm, e.updated_at)) {
-    return false;
+  if (enviadaEm && e.updated_at) {
+    const inicio = (await db.inicioDaEspera?.(row.organization_id, e.id, e.current_node_id)) ?? null;
+    if (!inboundEhDestaPergunta(enviadaEm, pisoDaPergunta(e.updated_at, inicio))) return false;
   }
   const wakeKey = `${e.current_node_id}:${e.steps_taken}:wake`;
   const agora = await db.agoraNoBanco();
@@ -581,6 +589,9 @@ export function createSupabaseReactivityClient(admin: SupabaseClient): Reactivit
     async updateEnrollment(id, orgId, patch) {
       const { error } = await admin.from("followup_enrollments").update(patch).eq("id", id).eq("organization_id", orgId);
       if (error) throw new Error(error.message);
+    },
+    async inicioDaEspera(orgId, enrollmentId, nodeId) {
+      return inicioDaEsperaNoBanco(admin, orgId, enrollmentId, nodeId);
     },
     async agoraNoBanco() {
       const { data, error } = await admin.rpc("fn_agora" as never);

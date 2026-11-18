@@ -3,7 +3,12 @@ import { idsDoContatoEGemeos } from "@/lib/channels/contato-por-telefone";
 import { drainEventLog } from "@/lib/event-log/drain";
 import { ensureHandlersRegistered } from "@/lib/event-log/register-handlers";
 import { createSupabaseFollowupGateDb } from "@/lib/followup/agent-followup-gate";
-import { inboundEhDestaPergunta, instanteDaMensagem } from "@/lib/followup/aplicar-inbound";
+import {
+  inboundEhDestaPergunta,
+  inicioDaEsperaNoBanco,
+  instanteDaMensagem,
+  pisoDaPergunta,
+} from "@/lib/followup/aplicar-inbound";
 import {
   aplicarRespostaInbound,
   createSupabaseAdminClient,
@@ -94,7 +99,13 @@ export async function aplicarRespostasQueChegaram(admin: SupabaseClient, deps: T
     const texto = typeof msg?.body === "string" ? msg.body.trim() : "";
     if (!texto) continue;
     const enviada = instanteDaMensagem(msg?.sent_at, (msg as { created_at?: unknown } | null)?.created_at) ?? "";
-    if (enviada && !inboundEhDestaPergunta(enviada, enrollment.updated_at)) continue;
+    if (enviada) {
+      const piso = pisoDaPergunta(
+        enrollment.updated_at,
+        await inicioDaEsperaNoBanco(admin, enrollment.organization_id, enrollment.id, enrollment.current_node_id),
+      );
+      if (!inboundEhDestaPergunta(enviada, piso)) continue;
+    }
     await aplicarRespostaInbound(deps, enrollment, texto);
     n++;
   }

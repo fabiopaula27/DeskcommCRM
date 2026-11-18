@@ -77,6 +77,44 @@ export function instanteDaMensagem(sentAt: unknown, createdAt: unknown): string 
   return ok(sentAt) ? sentAt : ok(createdAt) ? createdAt : null;
 }
 
+/**
+ * Desde quando a pergunta ATUAL espera, pelo relógio do BANCO: o `created_at`
+ * do último `wait_started` do nó. `updated_at` vem do relógio do servidor da
+ * aplicação; com a VPS segundos atrás do banco, a resposta da pergunta anterior
+ * (carimbada pelo banco) parecia posterior a esta e a respondia também.
+ */
+export async function inicioDaEsperaNoBanco(
+  admin: SupabaseClient,
+  organizationId: string,
+  enrollmentId: string,
+  nodeId: string | null | undefined,
+): Promise<string | null> {
+  if (!nodeId) return null;
+  const { data, error } = await admin
+    .from("followup_enrollment_events")
+    .select("created_at")
+    .eq("organization_id", organizationId)
+    .eq("enrollment_id", enrollmentId)
+    .eq("node_id", nodeId)
+    .eq("event_type", "wait_started")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) return null;
+  const v = (data as { created_at?: unknown } | null)?.created_at;
+  return typeof v === "string" ? v : null;
+}
+
+/** O piso da pergunta: o MAIS TARDE entre o relógio da aplicação e o do banco. */
+export function pisoDaPergunta(updatedAt: string, inicioNoBanco: string | null): string {
+  if (!inicioNoBanco) return updatedAt;
+  const a = Date.parse(updatedAt);
+  const b = Date.parse(inicioNoBanco);
+  if (!Number.isFinite(a)) return inicioNoBanco;
+  if (!Number.isFinite(b)) return updatedAt;
+  return b > a ? inicioNoBanco : updatedAt;
+}
+
 type InboundResolvido = { texto: string; enviadaEm: string | null };
 
 async function ultimoInboundDoContato(
@@ -120,7 +158,12 @@ async function aplicarTextoAosEnrollmentsEmEspera(
     const enrollment = row as EnrollmentRow;
     // Sem sent_at não dá pra saber se a mensagem é desta pergunta — fail-closed
     // (igual ao relógio): não avança com texto velho.
-    if (!enviadaEm || !inboundEhDestaPergunta(enviadaEm, enrollment.updated_at)) continue;
+    if (!enviadaEm) continue;
+    const piso = pisoDaPergunta(
+      enrollment.updated_at,
+      await inicioDaEsperaNoBanco(admin, orgId, enrollment.id, enrollment.current_node_id),
+    );
+    if (!inboundEhDestaPergunta(enviadaEm, piso)) continue;
     // UMA mensagem responde UMA pergunta. O laço abaixo roda até 6 vezes no
     // mesmo request: a resposta "3" do menu levava o fluxo à pergunta seguinte,
     // que entrava em `waiting_reply` e, na volta seguinte do laço, recebia o

@@ -36,8 +36,11 @@ describe("aplicarTextoNosFollowups — uma mensagem, uma pergunta", () => {
 
   it("filtra waiting_reply com inboundEhDestaPergunta (não reaproveita texto velho)", () => {
     const src = fonte();
-    expect(src).toMatch(/inboundEhDestaPergunta\(enviadaEm, enrollment\.updated_at\)/);
-    expect(src).toMatch(/if \(!enviadaEm \|\| !inboundEhDestaPergunta/);
+    // O piso é o mais tarde entre o relógio da aplicação (`updated_at`) e o do
+    // banco (`wait_started.created_at`) — ver `pisoDaPergunta`.
+    expect(src).toMatch(/pisoDaPergunta\(\s*enrollment\.updated_at/);
+    expect(src).toMatch(/if \(!inboundEhDestaPergunta\(enviadaEm, piso\)\) continue;/);
+    expect(src).toMatch(/if \(!enviadaEm\) continue;/);
   });
 
   it("não tem 2ª passada cega fora do loop (regressão: confirm + endereço no mesmo request)", () => {

@@ -1535,7 +1535,7 @@ export function createSupabaseAdminClient(admin: SupabaseClient): AdminClient {
     async loadEnrollmentEvents(enrollmentId) {
       const { data, error } = await admin
         .from("followup_enrollment_events")
-        .select("node_id, idempotency_key, event_type, payload")
+        .select("node_id, idempotency_key, event_type, payload, created_at")
         .eq("enrollment_id", enrollmentId)
         .order("created_at", { ascending: true });
       if (error) throw new Error(error.message);

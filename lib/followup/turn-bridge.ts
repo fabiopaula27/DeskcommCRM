@@ -431,7 +431,7 @@ export function createPgAdminClient(pool: pg.Pool): TurnBridgeAdminClient {
     },
     async loadEnrollmentEvents(enrollmentId) {
       const { rows } = await pool.query(
-        `select node_id, idempotency_key, event_type, payload from followup_enrollment_events where enrollment_id = $1 order by created_at asc`,
+        `select node_id, idempotency_key, event_type, payload, to_json(created_at) #>> '{}' as created_at from followup_enrollment_events e where e.enrollment_id = $1 order by e.created_at asc`,
         [enrollmentId],
       );
       return rows;
