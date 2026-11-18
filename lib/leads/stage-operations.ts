@@ -52,7 +52,7 @@ export interface DepsDeEtapa {
 
 /** As colunas que a tela e as regras usam. `position` entra: a reordenação calcula em cima dela. */
 const COLUNAS =
-  "id, name, slug, position, is_won, is_lost, is_archived, win_probability, agent_stage_hint, avisar_na_central, expected_duration_hours, last_change_actor_kind, last_change_at";
+  "id, name, slug, position, is_won, is_lost, is_archived, win_probability, agent_stage_hint, avisar_na_central, expected_duration_hours, color, last_change_actor_kind, last_change_at";
 
 /** A etapa como sai para quem lê — inclui a autoria da última mudança de configuração. */
 export interface EtapaVisivel {
@@ -80,6 +80,8 @@ export interface EtapaVisivel {
    * `validarJanelaDeEsfriamento`, aqui e nas rotas).
    */
   expected_duration_hours: number | null;
+  /** Cor da coluna no quadro (`#rrggbb`), `null` = sem cor. */
+  color: string | null;
   /** `user` | `ai` | `system` — `null` nas etapas anteriores a esta coluna. */
   last_change_actor_kind: string | null;
   last_change_at: string | null;
@@ -87,6 +89,7 @@ export interface EtapaVisivel {
 
 type EtapaLida = EtapaEditavel & {
   avisar_na_central?: boolean | null;
+  color?: string | null;
   last_change_actor_kind: string | null;
   last_change_at: string | null;
 };
@@ -142,6 +145,7 @@ export function corpo(etapas: EtapaLida[]): { etapas: EtapaVisivel[] } {
         win_probability: e.win_probability ?? null,
         avisar_na_central: e.avisar_na_central === true,
         expected_duration_hours: e.expected_duration_hours ?? null,
+        color: e.color ?? null,
         last_change_actor_kind: e.last_change_actor_kind ?? null,
         last_change_at: e.last_change_at ?? null,
       })),
@@ -337,6 +341,8 @@ export interface PedidoDeEdicao {
    * banco, porque a coluna é `numeric` sem CHECK.
    */
   expected_duration_hours?: number | null;
+  /** Cor da coluna (`#rrggbb`); `null` tira a cor. */
+  color?: string | null;
 }
 
 export async function atualizarEtapa(
@@ -417,7 +423,9 @@ export async function atualizarEtapa(
     win_probability?: number | null;
     avisar_na_central?: boolean;
     expected_duration_hours?: number | null;
+    color?: string | null;
   } = {};
+  if (pedido.color !== undefined) patchDoAlvo.color = pedido.color;
   if (pedido.name !== undefined) patchDoAlvo.name = pedido.name.trim();
   // `undefined` não viaja; `null` limpa a calibração de propósito.
   if (pedido.win_probability !== undefined) patchDoAlvo.win_probability = pedido.win_probability;

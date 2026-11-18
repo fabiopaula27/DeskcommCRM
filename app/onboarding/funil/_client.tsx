@@ -11,6 +11,13 @@ import { explicacaoDoPasso } from "@/lib/leads/agent-mapping";
 import { MAX_ETAPAS, MIN_ETAPAS, type PropostaDeFunil } from "@/lib/onboarding/proposta-de-funil";
 import { PACOTES } from "@/lib/onboarding/pacotes-de-funil";
 import type { Sugestao } from "@/lib/onboarding/sugerir-funil";
+import { SeletorDeCorDaEtapa } from "@/components/pipelines/SeletorDeCorDaEtapa";
+import { corSugerida } from "@/lib/leads/cores-das-etapas";
+
+/** Cada coluna nasce com uma cor diferente; a pessoa troca na bolinha. */
+function comCores(p: PropostaDeFunil): PropostaDeFunil {
+  return { ...p, etapas: p.etapas.map((e, i) => (e.cor ? e : { ...e, cor: corSugerida(i) })) };
+}
 
 /**
  * O quadro proposto, editável antes de existir.
@@ -30,7 +37,7 @@ export function QuadroClient({
   const inicial: PropostaDeFunil =
     sugestao.origem === "ia" ? sugestao.proposta : sugestao.pacote.proposta;
 
-  const [quadro, setQuadro] = useState<PropostaDeFunil>(inicial);
+  const [quadro, setQuadro] = useState<PropostaDeFunil>(() => comCores(inicial));
   const [origem, setOrigem] = useState<"ia" | "pacote">(sugestao.origem);
   const [trocando, setTrocando] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -43,6 +50,10 @@ export function QuadroClient({
 
   function renomear(i: number, nome: string) {
     setQuadro((q) => ({ ...q, etapas: q.etapas.map((e, j) => (j === i ? { ...e, nome } : e)) }));
+  }
+
+  function colorir(i: number, cor: string | null) {
+    setQuadro((q) => ({ ...q, etapas: q.etapas.map((e, j) => (j === i ? { ...e, cor } : e)) }));
   }
 
   function remover(i: number) {
@@ -62,7 +73,7 @@ export function QuadroClient({
       const corte = q.etapas.findIndex((e) => e.passo === "won" || e.passo === "lost");
       const onde = corte === -1 ? q.etapas.length : corte;
       const etapas = [...q.etapas];
-      etapas.splice(onde, 0, { nome: "", passo: null });
+      etapas.splice(onde, 0, { nome: "", passo: null, cor: corSugerida(q.etapas.length) });
       return { ...q, etapas };
     });
   }
@@ -70,7 +81,7 @@ export function QuadroClient({
   function usarPacote(id: string) {
     const p = PACOTES.find((x) => x.id === id);
     if (!p) return;
-    setQuadro(p.proposta);
+    setQuadro(comCores(p.proposta));
     // A origem acompanha: o resumo do onboarding registra de onde o quadro veio,
     // e manter "ia" depois de a pessoa escolher outro seria registrar mentira.
     setOrigem("pacote");
@@ -130,6 +141,11 @@ export function QuadroClient({
                 >
                   {i + 1}
                 </span>
+                <SeletorDeCorDaEtapa
+                  cor={etapa.cor}
+                  rotulo={etapa.nome || `${i + 1}`}
+                  aoEscolher={(cor) => colorir(i, cor)}
+                />
                 <div className="min-w-0 flex-1 space-y-1">
                   <Input
                     aria-label={`${t("Nome da coluna")} ${i + 1}`}

@@ -38,6 +38,8 @@ export interface EtapaDoFunil {
    * leituras antigas em cache.
    */
   expected_duration_hours?: number | null;
+  /** Cor da coluna no quadro (`#rrggbb`); `null` = sem cor. */
+  color?: string | null;
   /** Quem mexeu nesta etapa por último (migration 0101). `null` antes dela. */
   last_change_actor_kind?: string | null;
   last_change_at?: string | null;

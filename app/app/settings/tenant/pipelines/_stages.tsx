@@ -26,6 +26,7 @@ import {
   type PatchDeEtapa,
 } from "@/hooks/pipelines/useStages";
 import { useTaxasDasEtapas } from "@/hooks/pipelines/useWinRates";
+import { SeletorDeCorDaEtapa } from "@/components/pipelines/SeletorDeCorDaEtapa";
 import { LEAD_STAGES, type LeadStage } from "@/lib/agent-engine/agent/lead-state";
 import { ApiError } from "@/lib/api/types";
 import { ROTULO_DO_PASSO } from "@/lib/leads/agent-mapping";
@@ -550,6 +551,12 @@ export function StagesSection({
 
                 {/* No empilhado, cada controle carrega o rótulo que no desktop
                     vive no cabeçalho — mesmas constantes, `sm:hidden`. */}
+                <SeletorDeCorDaEtapa
+                  cor={etapa.color}
+                  rotulo={etapa.name}
+                  desabilitado={ocupado}
+                  aoEscolher={(cor) => aplicar(etapa.id, { color: cor })}
+                />
                 <div className="min-w-0 flex-1 space-y-1">
                   <span className="block text-xs font-medium text-text-muted sm:hidden">
                     {t(ROTULO.nome)}

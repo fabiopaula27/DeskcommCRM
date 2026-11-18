@@ -36,6 +36,8 @@ export interface EtapaProposta {
    * dívida que não existe.
    */
   passo: LeadStage | null;
+  /** Cor da coluna no quadro (`#rrggbb`). Ausente = sem cor. */
+  cor?: string | null;
 }
 
 export interface PropostaDeFunil {
@@ -84,7 +86,7 @@ export function normalizarProposta(bruta: {
 
   for (const item of etapasBrutas) {
     if (etapas.length >= MAX_ETAPAS) break;
-    const registro = (item ?? {}) as { nome?: unknown; passo?: unknown };
+    const registro = (item ?? {}) as { nome?: unknown; passo?: unknown; cor?: unknown };
 
     const nome = limpar(registro.nome);
     if (!nome) continue;
@@ -102,7 +104,8 @@ export function normalizarProposta(bruta: {
     if (passo && passosUsados.has(passo)) passo = null;
     if (passo) passosUsados.add(passo);
 
-    etapas.push({ nome, passo });
+    const cor = typeof registro.cor === "string" && /^#[0-9a-fA-F]{6}$/.test(registro.cor) ? registro.cor : null;
+    etapas.push(cor ? { nome, passo, cor } : { nome, passo });
   }
 
   return { nome: limpar(bruta.nome), etapas };

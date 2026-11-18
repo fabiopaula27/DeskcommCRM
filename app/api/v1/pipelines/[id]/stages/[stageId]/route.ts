@@ -65,6 +65,8 @@ const bodySchema = z
      * aqui é mandar a frase em português antes de tocar no banco.
      */
     expected_duration_hours: z.number().int().min(1).max(8760).nullable().optional(),
+    /** Cor da coluna no quadro — o mesmo formato do CHECK `crm_stages_color_format`. */
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
   })
   .strict()
   .refine((b) => Object.keys(b).length > 0, { message: "Nada para alterar." });

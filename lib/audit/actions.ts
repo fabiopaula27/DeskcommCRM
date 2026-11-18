@@ -916,6 +916,9 @@ export const AUDIT_ACTIONS = [
   "proposal_template.hidden",
   "proposal_template.shown",
   "extension.catalog_admitted",
+  // Versão do catálogo escondida da aba Catálogo pelo dono da instalação; o snapshot
+  // admitido e o digest não mudam — só a vitrine deixa de mostrá-la.
+  "extension.catalog_entry_hidden",
   "extension.installed",
   "extension.install_failed",
   "extension.configured",

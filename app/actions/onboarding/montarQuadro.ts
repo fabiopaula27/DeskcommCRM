@@ -252,6 +252,21 @@ export async function aplicarQuadro(formData: FormData): Promise<ResultadoDoQuad
     return { ok: false, erro: explicarRecusa(r.motivo, r.quantos) };
   }
 
+  // A cor de cada coluna, escolhida no wizard. A função do banco grava as
+  // etapas sem cor; aqui ela entra por nome (único no funil). Falha não desfaz
+  // o quadro: a cor é ajustável depois em Configurações › Etapas do funil.
+  for (const etapa of proposta.etapas) {
+    if (!etapa.cor) continue;
+    const { error: erroDaCor } = await admin
+      .from("crm_stages")
+      .update({ color: etapa.cor })
+      .eq("organization_id", ctx.orgId)
+      .eq("pipeline_id", atual.pipelineId)
+      .eq("name", etapa.nome)
+      .eq("is_archived", false);
+    if (erroDaCor) break;
+  }
+
   const origem = String(formData.get("origem") ?? "pacote") === "ia" ? "ia" : "pacote";
   try {
     await patchOnboardingState(ctx.orgId, {

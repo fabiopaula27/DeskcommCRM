@@ -26,6 +26,7 @@ import {
   ehTipoDeOperacao,
 } from "./vocabulario";
 import { ExtensionServiceError, requireExtensionPlatformFor } from "./http";
+import { chaveDaVersao, versoesOcultas } from "./ocultas";
 import {
   checkCompatibility,
   configurationSchema,
@@ -487,6 +488,9 @@ export async function listExtensions(user: AuthUser, org: ActiveOrg): Promise<Ex
     }
     return view;
   });
+  // Versões que o dono da instalação escondeu da vitrine (`ocultas.ts`). Só a
+  // lista mostrada muda: identidade, removidas e instaladas seguem do snapshot.
+  const ocultas = await versoesOcultas();
   return {
     organization_id: org.orgId,
     can_manage: org.role === "admin" && !user.support,
@@ -496,7 +500,7 @@ export async function listExtensions(user: AuthUser, org: ActiveOrg): Promise<Ex
       origin: row.origin,
       revision: row.revision,
       admitted_at: row.admitted_at,
-      entries: catalogEntries.get(row.id) ?? [],
+      entries: (catalogEntries.get(row.id) ?? []).filter((entry) => !ocultas.has(chaveDaVersao(row.id, entry))),
     })),
     installations: views,
     removed_installations: removed.map((item) => ({

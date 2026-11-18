@@ -17,7 +17,8 @@ import type {
   ExtensionOperationView,
   InstalledExtensionView,
 } from "@/lib/extensions/view";
-import { ArrowsClockwise, CircleNotch, Info, PuzzlePiece, Warning } from "@/lib/ui/icons";
+import { ArrowsClockwise, CircleNotch, Info, PuzzlePiece, Trash, Warning } from "@/lib/ui/icons";
+import { ocultarVersaoDoCatalogo } from "@/app/actions/extensions/ocultarVersaoDoCatalogo";
 import { requestExtensionApi, type ExtensionApiResult } from "./api-client";
 import {
   CatalogAdmission,
@@ -1106,7 +1107,41 @@ export function ExtensionsManager({
                           ? identity.revision
                           : null;
                     const target = `install:${catalog.id}:${entry.publisher}:${entry.name}:${entry.version}:${expected ?? "none"}`;
+                    // Excluir da vitrine só o que NÃO está instalado nesta versão.
+                    const podeExcluir =
+                      data.can_install &&
+                      !(identity.kind === "installed" && identity.version === entry.version);
                     return (
+                      <div
+                        key={`wrap:${catalog.id}:${entry.publisher}:${entry.name}:${entry.version}`}
+                        className="relative"
+                      >
+                      {podeExcluir ? (
+                        <button
+                          type="button"
+                          className="absolute top-3 right-3 z-10 rounded-md p-1.5 text-text-muted hover:bg-error-bg hover:text-error-fg disabled:opacity-50"
+                          aria-label={`${t("Excluir do catálogo")} ${entry.name} ${entry.version}`}
+                          title={t("Excluir do catálogo")}
+                          disabled={!mutationsReady}
+                          onClick={async () => {
+                            if (!window.confirm(t("Excluir esta versão do catálogo? Ela deixa de aparecer aqui; para trazê-la de volta, admita o catálogo de novo."))) return;
+                            const r = await ocultarVersaoDoCatalogo({
+                              catalog_id: catalog.id,
+                              publisher: entry.publisher,
+                              name: entry.name,
+                              version: entry.version,
+                            });
+                            if (!r.ok) {
+                              toast.error(t(r.error));
+                              return;
+                            }
+                            toast.success(t("Versão excluída do catálogo."));
+                            void carregar();
+                          }}
+                        >
+                          <Trash size={16} aria-hidden />
+                        </button>
+                      ) : null}
                       <CatalogExtensionCard
                         // A precondição entra na chave: se outra sessão mudar a instalação, o card
                         // remonta e fecha um diálogo aberto, em vez de confirmar sobre o estado novo.
@@ -1125,6 +1160,7 @@ export function ExtensionsManager({
                           void install(catalog.id, entry, expectedRevision)
                         }
                       />
+                      </div>
                     );
                   })}
                 </div>
