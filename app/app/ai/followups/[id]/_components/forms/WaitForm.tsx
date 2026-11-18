@@ -109,7 +109,7 @@ export function WaitForm({
           <Input
             id="wait-duration"
             type="number"
-            min={5}
+            min={1}
             value={durationMin}
             onChange={(e) => {
               const v = Number(e.target.value);
@@ -133,7 +133,7 @@ export function WaitForm({
               <Input
                 id="wait-min"
                 type="number"
-                min={5}
+                min={1}
                 value={minMin}
                 onChange={(e) => {
                   const v = Number(e.target.value);
@@ -147,7 +147,7 @@ export function WaitForm({
               <Input
                 id="wait-max"
                 type="number"
-                min={5}
+                min={1}
                 value={maxMin}
                 onChange={(e) => {
                   const v = Number(e.target.value);

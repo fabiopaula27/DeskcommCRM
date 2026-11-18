@@ -116,14 +116,14 @@ export const horarioDaEsperaSchema = z.strictObject({
 /**
  * Wait node configuration schema.
  * Supports two modes:
- * - fixed: absolute wait duration in milliseconds (5 min to 90 days)
+ * - fixed: absolute wait duration in milliseconds (1 min to 90 days)
  * - smart: adaptive wait with min/max range and optional guidance
  */
 export const waitConfigSchema = z
   .discriminatedUnion('mode', [
     z.strictObject({
       mode: z.literal('fixed'),
-      duration_ms: z.number().int().min(300_000).max(7_776_000_000),
+      duration_ms: z.number().int().min(60_000).max(7_776_000_000),
       /**
        * A espera NÃO é encurtada nem cancelada quando o contato manda mensagem.
        *
@@ -156,7 +156,7 @@ export const waitConfigSchema = z
     }),
     z.strictObject({
       mode: z.literal('smart'),
-      min_ms: z.number().int().min(300_000),
+      min_ms: z.number().int().min(60_000),
       max_ms: z.number().int().max(7_776_000_000),
       guidance: z.string().max(500).optional(),
     }),
