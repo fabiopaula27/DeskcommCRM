@@ -15,7 +15,7 @@ import { drainEventLog } from "@/lib/event-log/drain";
 import { comOrigemDeRequest } from "@/lib/event-log/origem-do-dreno";
 import { ensureHandlersRegistered } from "@/lib/event-log/register-handlers";
 import { idsDoContatoEGemeos } from "@/lib/channels/contato-por-telefone";
-import { aplicarTextoNosFollowups } from "@/lib/followup/aplicar-inbound";
+import { aplicarTextoNosFollowups, instanteDaMensagem } from "@/lib/followup/aplicar-inbound";
 import {
   avancarEnrollmentAtivo,
   createSupabaseAdminClient,
@@ -97,16 +97,38 @@ async function tickAtivosDoContato(
   return rows.length;
 }
 
+/**
+ * O instante da mensagem que acorda a espera. Sem ele, `acordarPorInbound`
+ * falha ABERTO (não tem com o que comparar) — e uma segunda passada deste
+ * caminho para a MESMA mensagem (o webhook entregue de novo, medido 17 s
+ * depois) acordava a pergunta SEGUINTE com a resposta da anterior: o "3" do
+ * menu respondia também "você já tem as medidas?".
+ */
+async function instanteDoInbound(admin: SupabaseClient, sinal: SinalDeInbound): Promise<string | null> {
+  let q = admin
+    .from("messages")
+    .select("sent_at, created_at")
+    .eq("organization_id", sinal.organizationId)
+    .eq("direction", "inbound");
+  q = sinal.messageId ? q.eq("id", sinal.messageId) : q.eq("contact_id", sinal.contactId);
+  const { data, error } = await q.order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (error || !data) return null;
+  const linha = data as { sent_at?: unknown; created_at?: unknown };
+  return instanteDaMensagem(linha.sent_at, linha.created_at);
+}
+
 async function acordarFollowupPorInbound(admin: SupabaseClient, sinal: SinalDeInbound): Promise<void> {
   const db = createSupabaseReactivityClient(admin);
+  const instante = await instanteDoInbound(admin, sinal);
   await applyReactivityEvent(db, () => new Date(), {
     id: sinal.messageId ?? `inbound:${sinal.contactId}`,
     organization_id: sinal.organizationId,
     event_type: "message.received",
     entity_kind: "message",
     entity_id: sinal.messageId ?? null,
-    payload: { contact_id: sinal.contactId },
+    payload: { contact_id: sinal.contactId, ...(instante ? { sent_at: instante } : {}) },
     metadata: { source: "kick-local-pipeline" },
+    ...(instante ? { created_at: instante } : {}),
     consumed_by: [],
     attempts: 0,
   });

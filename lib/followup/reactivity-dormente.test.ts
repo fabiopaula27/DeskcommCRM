@@ -236,3 +236,35 @@ describe("reatividade — o roteiro de atendimento ('coletando', PR 2 do #1130)"
   });
 });
 
+
+describe("reatividade — a resposta de uma pergunta não acorda a seguinte", () => {
+  // Medido em produção (18/11): o "3" do menu chegou às 12:19:39Z e a pergunta
+  // seguinte estacionou às 12:19:41Z; o webhook entregue de novo 17 s depois
+  // acordou essa pergunta com o mesmo "3".
+  const pergunta = inscricao({ status: "waiting_reply", current_node_id: "match_reply-11", updated_at: "2026-11-18T12:19:41.291Z" });
+
+  it("mensagem gravada antes da pergunta não a acorda, mesmo sem sent_at no payload", async () => {
+    const { db, espiao } = montarDb([pergunta]);
+    await applyReactivityEvent(db, () => new Date(AGORA), eventoDeInbound({ created_at: "2026-11-18T12:19:39.492Z" }));
+    expect(espiao.eventos).toEqual([]);
+  });
+
+  it("carimbo do WhatsApp à frente do servidor não engana: vale o mais cedo", async () => {
+    const { db, espiao } = montarDb([pergunta]);
+    await applyReactivityEvent(
+      db,
+      () => new Date(AGORA),
+      eventoDeInbound({
+        created_at: "2026-11-18T12:19:39.492Z",
+        payload: { contact_id: CONTATO, direction: "inbound", sent_at: "2026-11-18T12:19:42Z" },
+      }),
+    );
+    expect(espiao.eventos).toEqual([]);
+  });
+
+  it("mensagem nova, depois da pergunta, acorda", async () => {
+    const { db, espiao } = montarDb([pergunta]);
+    await applyReactivityEvent(db, () => new Date(AGORA), eventoDeInbound({ created_at: "2026-11-18T12:20:10.000Z" }));
+    expect(espiao.eventos.map((e) => e.event_type)).toEqual(["inbound_woke"]);
+  });
+});

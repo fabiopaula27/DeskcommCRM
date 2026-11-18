@@ -53,7 +53,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { EventRow } from "@/lib/event-log/dispatcher";
-import { inboundEhDestaPergunta } from "@/lib/followup/aplicar-inbound";
+import { inboundEhDestaPergunta, instanteDaMensagem } from "@/lib/followup/aplicar-inbound";
 import type { EnrollmentPatch } from "./engine";
 import { triggerConfigSchema } from "./api-schemas";
 import type { EnrollmentOutcome, EnrollmentStatus } from "./node-handlers";
@@ -359,7 +359,9 @@ async function acordarPorInbound(
   // A mensagem que acabou de avançar o nó (e estacionou uma espera NOVA)
   // não acorda essa espera. Sem `created_at`/`sent_at` falha aberto: o
   // kick sintético ainda precisa acordar a espera que já existia.
-  const enviadaEm = strOrNull(row.payload.sent_at) ?? row.created_at ?? null;
+  // O mais cedo entre o carimbo do WhatsApp e o da gravação: o do WhatsApp pode
+  // vir segundos à frente do servidor (ver `instanteDaMensagem`).
+  const enviadaEm = instanteDaMensagem(strOrNull(row.payload.sent_at), row.created_at ?? null);
   if (enviadaEm && e.updated_at && !inboundEhDestaPergunta(enviadaEm, e.updated_at)) {
     return false;
   }
