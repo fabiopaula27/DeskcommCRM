@@ -61,6 +61,7 @@ import { logger } from "@/lib/logger";
 import { autorizarContatoParaIA } from "@/lib/ai/elegibilidade/autorizacao";
 
 import { lerContinuidadeHumana, type ContinuidadeHumana } from "./continuidade";
+import { responderMensagemPendenteDoCliente } from "./responder-pendente";
 
 export interface RetomadaDeps {
   /** Admin client (service role) OU client do request — os dois filtram org aqui. */
@@ -333,6 +334,15 @@ export async function devolverAtendimentoAoAgente(
       input.origem,
     );
   }
+
+  // (7) O cliente escreveu enquanto a equipe atendia e ficou sem resposta: a IA
+  // responde agora, em vez de esperar a PRÓXIMA mensagem dele.
+  await responderMensagemPendenteDoCliente(supabase, {
+    organizationId,
+    conversationId: input.conversationId,
+    contactId: conv.contact_id,
+    requestId: deps.requestId,
+  });
 
   await audit({
     action: "ai.reactivated_by_agent",
