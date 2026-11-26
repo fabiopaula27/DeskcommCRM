@@ -17,6 +17,8 @@ import { inicioDoDia, somarDias } from "@/lib/relatorios/periodo";
 import { AbaAtendimento } from "./AbaAtendimento";
 import { AbaFunil } from "./AbaFunil";
 import { AbaLeadsEVendas } from "./AbaLeadsEVendas";
+import { AbaMetasEProdutos } from "./AbaMetasEProdutos";
+import { AbaTemplates } from "./AbaTemplates";
 
 export type Pessoa = { user_id: string; nome: string };
 export type FunilOpcao = { id: string; nome: string };
@@ -163,7 +165,13 @@ export function RelatoriosClient({
         <TabsContent value="funil" className="mt-4">
           <AbaFunil filtros={filtros} moeda={moeda} funis={funis} />
         </TabsContent>
-        {(["templates", "metas", "ia", "envio"] as const).map((v) => (
+        <TabsContent value="templates" className="mt-4">
+          <AbaTemplates filtros={filtros} />
+        </TabsContent>
+        <TabsContent value="metas" className="mt-4">
+          <AbaMetasEProdutos filtros={filtros} moeda={moeda} pessoas={pessoas} />
+        </TabsContent>
+        {(["ia", "envio"] as const).map((v) => (
           <TabsContent key={v} value={v} className="mt-4">
             <div className="rounded-lg border border-dashed border-border bg-surface p-10 text-center text-sm text-text-muted">
               {t("Chega na próxima etapa dos relatórios.")}

@@ -10,6 +10,8 @@ vi.mock("next/navigation", () => ({
 vi.mock("./AbaAtendimento", () => ({ AbaAtendimento: () => <p>conteudo-atendimento</p> }));
 vi.mock("./AbaLeadsEVendas", () => ({ AbaLeadsEVendas: () => <p>conteudo-leads</p> }));
 vi.mock("./AbaFunil", () => ({ AbaFunil: () => <p>conteudo-funil</p> }));
+vi.mock("./AbaMetasEProdutos", () => ({ AbaMetasEProdutos: () => <p>conteudo-metas</p> }));
+vi.mock("./AbaTemplates", () => ({ AbaTemplates: () => <p>conteudo-templates</p> }));
 
 import { RelatoriosClient } from "./RelatoriosClient";
 
