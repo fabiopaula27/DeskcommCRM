@@ -97,7 +97,7 @@ export const ADMIN_DESTINATIONS: readonly AdminDestination[] = [
   },
   {
     href: "/admin/incidents",
-    label: "Incidents",
+    label: "Incidentes",
     description: "Incidentes da plataforma e o que foi feito em cada um",
     group: "operacao",
     icon: Warning,
@@ -120,14 +120,14 @@ export const ADMIN_DESTINATIONS: readonly AdminDestination[] = [
   // ── Clientes ──────────────────────────────────────────────────────────────
   {
     href: "/admin/tenants",
-    label: "Tenants",
+    label: "Clientes",
     description: "Empresas da instalação: criar, listar e abrir cada uma",
     group: "clientes",
     icon: Buildings,
   },
   {
     href: "/admin/users",
-    label: "Users",
+    label: "Usuários",
     description: "Usuários da instalação e os papéis de cada um",
     group: "clientes",
     icon: Users,
@@ -141,7 +141,7 @@ export const ADMIN_DESTINATIONS: readonly AdminDestination[] = [
   },
   {
     href: "/admin/usage",
-    label: "Usage",
+    label: "Central de uso",
     description: "Consumo de IA e de mensagens por empresa",
     group: "clientes",
     icon: ChartBar,

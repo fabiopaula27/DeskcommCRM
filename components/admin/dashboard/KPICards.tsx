@@ -54,7 +54,7 @@ export function KPICards({ kpis }: KPICardsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
       <KPICard
-        label={t("Tenants Ativos")}
+        label={t("Clientes ativos")}
         value={kpis.tenants_active}
         subtitle={t("organizações ativas")}
         Icon={Buildings}
@@ -76,14 +76,14 @@ export function KPICards({ kpis }: KPICardsProps) {
         //
         // Quando o rótulo virar neutro de canal (Fase 3a, junto do seletor de
         // canal), ele passa a ter tradução de verdade e volta para `t()`.
-        label="Alertas WAHA"
+        label="Alertas WhatsApp"
         value={kpis.waha_ban_alerts}
         subtitle={t("sessões com problema")}
         Icon={WifiSlash}
         accent={kpis.waha_ban_alerts > 0}
       />
       <KPICard
-        label={t("LGPD em Risco")}
+        label={t("LGPD em risco")}
         value={kpis.lgpd_at_risk}
         subtitle={t("requisições próximas do prazo")}
         Icon={Scales}
@@ -96,9 +96,9 @@ export function KPICards({ kpis }: KPICardsProps) {
           divergência cresce com o tempo. Ver o comentário do cálculo em
           `app/api/v1/admin/dashboard/kpis/route.ts`. */}
       <KPICard
-        label={t("Budgets IA")}
+        label={t("Orçamento de IA")}
         value={kpis.ai_budget_warnings}
-        subtitle={t("tenants com gasto acumulado ≥80% do teto")}
+        subtitle={t("clientes com gasto acumulado ≥80% do teto")}
         Icon={ChartBar}
         accent={kpis.ai_budget_warnings > 0}
       />
