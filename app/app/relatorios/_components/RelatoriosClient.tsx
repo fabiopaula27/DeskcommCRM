@@ -33,6 +33,8 @@ const ABAS = [
   { valor: "envio", rotulo: "Envio agendado" },
 ] as const;
 
+const DIA = /^\d{4}-\d{2}-\d{2}$/;
+
 type ValorDaAba = (typeof ABAS)[number]["valor"];
 
 function abaValida(v: string | null): v is ValorDaAba {
@@ -59,8 +61,14 @@ export function RelatoriosClient({
 
   const abaDaUrl = busca.get("aba");
   const [aba, setAba] = useState<ValorDaAba>(abaValida(abaDaUrl) ? abaDaUrl : "atendimento");
-  const [de, setDe] = useState(busca.get("de") ?? periodoInicial.from);
-  const [ate, setAte] = useState(busca.get("ate") ?? periodoInicial.to);
+  // Período da URL só vale se for dia válido e em ordem; senão, o padrão.
+  const deUrl = busca.get("de");
+  const ateUrl = busca.get("ate");
+  const urlValida =
+    !!deUrl && !!ateUrl && DIA.test(deUrl) && DIA.test(ateUrl) && deUrl <= ateUrl &&
+    !Number.isNaN(Date.parse(deUrl)) && !Number.isNaN(Date.parse(ateUrl));
+  const [de, setDe] = useState(urlValida ? deUrl : periodoInicial.from);
+  const [ate, setAte] = useState(urlValida ? ateUrl : periodoInicial.to);
   const [aplicado, setAplicado] = useState({ de, ate });
 
   const filtros: FiltrosDoRelatorio = useMemo(

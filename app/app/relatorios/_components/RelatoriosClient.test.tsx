@@ -55,3 +55,17 @@ describe("RelatoriosClient", () => {
     expect(screen.getByText("Chega na próxima etapa dos relatórios.")).toBeTruthy();
   });
 });
+
+describe("período vindo da URL", () => {
+  it("data inválida na URL não derruba a página", async () => {
+    vi.resetModules();
+    vi.doMock("next/navigation", () => ({
+      useRouter: () => ({ replace: vi.fn() }),
+      usePathname: () => "/app/relatorios",
+      useSearchParams: () => new URLSearchParams("de=foo&ate=2026-11-01"),
+    }));
+    const { RelatoriosClient: Cliente } = await import("./RelatoriosClient");
+    render(<Cliente {...props} />);
+    expect((screen.getByLabelText("De") as HTMLInputElement).value).toBe("2026-11-01");
+  });
+});

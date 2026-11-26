@@ -270,7 +270,8 @@ export function TabelaRanking<T>({
   const [pagina, setPagina] = useState(0);
   if (linhas.length === 0) return <Vazio texto={vazio} />;
   const paginas = Math.ceil(linhas.length / porPagina);
-  const atual = linhas.slice(pagina * porPagina, (pagina + 1) * porPagina);
+  const inicio = pagina * porPagina;
+  const fim = inicio + porPagina;
   return (
     <div>
       <div className="overflow-x-auto">
@@ -287,11 +288,17 @@ export function TabelaRanking<T>({
             </tr>
           </thead>
           <tbody>
-            {atual.map((linha, i) => {
-              const pos = pagina * porPagina + i + 1;
+            {/* Todas as linhas ficam no documento: as fora da página atual só
+                aparecem na impressão, para o PDF levar a tabela inteira. */}
+            {linhas.map((linha, i) => {
+              const pos = i + 1;
+              const naPagina = i >= inicio && i < fim;
               const n = nome(linha);
               return (
-                <tr key={pos} className="border-b border-border/60 last:border-0">
+                <tr
+                  key={pos}
+                  className={`border-b border-border/60 last:border-0 ${naPagina ? "" : "hidden print:table-row"}`}
+                >
                   <td className="py-2.5">
                     <span
                       className={`inline-flex size-6 items-center justify-center rounded-full text-xs tabular-nums ${

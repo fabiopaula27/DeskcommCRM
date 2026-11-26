@@ -882,6 +882,7 @@ export const NAV_CATALOG = [
   {
     href: "/app/relatorios",
     label: "Relatórios",
+    minRole: "manager",
     description: "Atendimento, vendas e funil do período, com PDF.",
     icon: "ChartLineUp",
     group: "analise",

@@ -130,3 +130,27 @@ describe("AbaFunil", () => {
     expect(screen.getByText("25%")).toBeTruthy();
   });
 });
+
+describe("impressão das tabelas", () => {
+  it("todas as linhas do ranking existem no documento (as de outras páginas só aparecem na impressão)", () => {
+    const atendentes = Array.from({ length: 12 }, (_, i) => ({
+      user_id: `u${i}`, nome: `Pessoa ${i}`, email: null, conversas: 100 - i, mensagens: 0, leads: 0, vendas: 0,
+    }));
+    useRelatorio.mockReturnValue({
+      data: { data: {
+        disponivel: true,
+        cartoes: {
+          conversas: { hoje: 0, ontem: 0, trinta_dias: 0, variacao: { tipo: "igual" } },
+          leads: { hoje: 0, ontem: 0, trinta_dias: 0, variacao: { tipo: "igual" } },
+          vendas: { hoje: 0, ontem: 0, trinta_dias: 0, variacao: { tipo: "igual" } },
+          receita_cents: { hoje: 0, ontem: 0, trinta_dias: 0, variacao: { tipo: "igual" } },
+        },
+        conversas_por_dia: [], conversas_resumo: { total: 0, ativas: 0, pausadas: 0, tempo_medio_atendimento_s: null, tempo_primeira_resposta_s: null },
+        por_canal: [], mensagens: { enviadas: 0, humanas: 0, ia: 0, recebidas: 0, media_por_conversa: null },
+        humanas_por_hora: horas, ia_por_hora: horas, ia_por_dia: [], atendentes, distribuicoes: [],
+      } }, isLoading: false, isError: false,
+    });
+    render(<AbaAtendimento filtros={filtros} moeda="BRL" pessoas={[]} />);
+    expect(screen.getByText("Pessoa 11").closest("tr")!.className).toMatch(/print:table-row/);
+  });
+});

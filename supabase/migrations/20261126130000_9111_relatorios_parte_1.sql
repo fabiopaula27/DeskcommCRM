@@ -20,7 +20,7 @@ with
       (d.hoje::timestamp at time zone p_tz) as ini_hoje,
       ((d.hoje + 1)::timestamp at time zone p_tz) as fim_hoje,
       ((d.hoje - 1)::timestamp at time zone p_tz) as ini_ontem,
-      now() - interval '30 days' as ini_30
+      ((d.hoje - 29)::timestamp at time zone p_tz) as ini_30
     from dias d
   ),
   cards as (
@@ -57,7 +57,14 @@ with
     from public.messages m
     where m.organization_id = p_org
       and m.created_at >= p_from and m.created_at < p_to
-      and (p_user is null or m.sent_by_user_id = p_user or m.direction = 'inbound')
+      and (
+        p_user is null
+        or m.sent_by_user_id = p_user
+        or (m.direction = 'inbound' and m.conversation_id in (
+          select c2.id from public.conversations c2
+          where c2.organization_id = p_org and c2.assigned_to_user_id = p_user
+        ))
+      )
   ),
   primeira as (
     select
@@ -122,22 +129,27 @@ select jsonb_build_object(
       'leads', coalesce(ld.total, 0),
       'vendas', coalesce(v.total, 0)
     ) order by coalesce(c.total, 0) desc)
-    from public.user_organizations u
+    from (
+      select assigned_to_user_id as user_id from convs where assigned_to_user_id is not null
+      union select sent_by_user_id from msgs where direction = 'outbound' and sent_by_user_id is not null
+      union select owner_user_id from public.crm_leads
+            where organization_id = p_org and owner_user_id is not null
+              and ((created_at >= p_from and created_at < p_to) or (status = 'won' and closed_at >= p_from and closed_at < p_to))
+    ) u
     left join (select assigned_to_user_id as uid, count(*) as total from convs group by 1) c on c.uid = u.user_id
     left join (select sent_by_user_id as uid, count(*) as total from msgs where direction = 'outbound' group by 1) m on m.uid = u.user_id
     left join (select owner_user_id as uid, count(*) as total from public.crm_leads
                where organization_id = p_org and created_at >= p_from and created_at < p_to group by 1) ld on ld.uid = u.user_id
     left join (select owner_user_id as uid, count(*) as total from public.crm_leads
                where organization_id = p_org and status = 'won' and closed_at >= p_from and closed_at < p_to group by 1) v on v.uid = u.user_id
-    where u.organization_id = p_org and u.revoked_at is null
-      and (p_user is null or u.user_id = p_user)
-      and (coalesce(c.total, 0) + coalesce(m.total, 0) + coalesce(ld.total, 0) + coalesce(v.total, 0)) > 0
+    where (p_user is null or u.user_id = p_user)
   ), '[]'::jsonb),
   'distribuicoes', coalesce((
     select jsonb_agg(jsonb_build_object('user_id', uid, 'total', total) order by total desc)
     from (select e.to_user_id as uid, count(*) as total
           from public.conversation_assignment_events e
           where e.organization_id = p_org and e.to_user_id is not null
+            and (p_user is null or e.to_user_id = p_user)
             and e.created_at >= p_from and e.created_at < p_to
           group by 1) s
   ), '[]'::jsonb)
@@ -188,12 +200,13 @@ select jsonb_build_object(
       'vendas', coalesce(g.total, 0),
       'receita_cents', coalesce(g.receita, 0)
     ) order by coalesce(g.receita, 0) desc, coalesce(c.total, 0) desc)
-    from public.user_organizations u
+    from (
+      select owner_user_id as user_id from criados where owner_user_id is not null
+      union select owner_user_id from ganhos where owner_user_id is not null
+    ) u
     left join (select owner_user_id as uid, count(*) as total from criados group by 1) c on c.uid = u.user_id
     left join (select owner_user_id as uid, count(*) as total, coalesce(sum(value_cents), 0) as receita from ganhos group by 1) g on g.uid = u.user_id
-    where u.organization_id = p_org and u.revoked_at is null
-      and (p_owner is null or u.user_id = p_owner)
-      and (coalesce(c.total, 0) + coalesce(g.total, 0)) > 0
+    where (p_owner is null or u.user_id = p_owner)
   ), '[]'::jsonb)
 );
 $$;
