@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { updateBranding } from "@/app/actions/settings/updateBranding";
 import { CampoDeLogo } from "@/components/branding/CampoDeLogo";
 import { CampoDoIconeDaAba } from "@/components/branding/CampoDoIconeDaAba";
+import { CampoDoLogoDoLogin } from "@/components/branding/CampoDoLogoDoLogin";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -53,6 +54,7 @@ interface Props {
   readonly logoEscuroEmVigor?: string | null;
   /** O ícone da aba subido nesta tela (URL pública), ou `null` para o desenhado. */
   readonly iconeDaAba?: string | null;
+  readonly logoDoLogin?: string | null;
   /** O que apareceria SEM o arquivo subido — a URL colada no `.env`, se houver. */
   readonly logoDoAmbiente: string | null;
   readonly origens: { readonly nome: string; readonly logoUrl: string; readonly cor: string };
@@ -78,6 +80,7 @@ export function FormularioDaMarca({
   logoEmVigor,
   logoEscuroEmVigor,
   iconeDaAba,
+  logoDoLogin,
   logoDoAmbiente,
   origens,
   definidoNestaTela,
@@ -438,6 +441,7 @@ export function FormularioDaMarca({
         />
         {/* Mesmo cartão do logo: também sobe na hora, sem passar pelo Salvar.
             Literal, nunca memoizado — ver o cabeçalho de CampoDoIconeDaAba. */}
+        <CampoDoLogoDoLogin iconeDaCamada={{ url: logoDoLogin ?? null }} />
         <CampoDoIconeDaAba iconeDaCamada={{ url: iconeDaAba ?? null }} />
       </Card>
 

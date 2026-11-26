@@ -1,6 +1,7 @@
 import { LogotipoDoProduto } from "@/components/branding/MarcaDoProduto";
 import { marcaEhADoProduto } from "@/lib/branding";
 import { marcaDaSaida } from "@/lib/branding/saida";
+import { logoDoLogin } from "@/lib/branding/logo-do-login";
 import { createClient } from "@/lib/supabase/server";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
 import { idiomaDoVisitante } from "@/lib/i18n/idiomaAnonimo";
@@ -43,7 +44,7 @@ import { idiomaDoVisitante } from "@/lib/i18n/idiomaAnonimo";
  * o confere no login de quem não entrou. Não apague um sem o outro.
  */
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
-  const marca = await marcaDaSaida(null);
+  const [marca, logoExclusivoDoLogin] = await Promise.all([marcaDaSaida(null), logoDoLogin()]);
   // A maioria destas telas roda ANTES do login (não há usuário nenhum), mas
   // duas — `/login/mfa` e, em parte, `/login/recovery` — rodam com uma sessão
   // parcial já criada (primeiro fator verificado, segundo pendente). Onde há
@@ -61,7 +62,18 @@ export default async function PublicLayout({ children }: { children: React.React
     <IdiomaProvider locale={locale}>
       <div className="flex min-h-screen items-center justify-center bg-background p-6">
         <div className="w-full max-w-sm space-y-6">
-          {marca.logoUrl || marca.logoDarkUrl ? (
+          {logoExclusivoDoLogin ? (
+            <div className="flex justify-center">
+              {/* Logo exclusivo do login (Admin › Marca), vale nos dois temas. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                data-testid="logo-do-login"
+                src={logoExclusivoDoLogin}
+                alt={marca.nome}
+                className="h-auto max-h-24 w-auto max-w-[16rem] object-contain"
+              />
+            </div>
+          ) : marca.logoUrl || marca.logoDarkUrl ? (
             <div className="flex justify-center">
               {/*
                 <img> em vez de next/image pelo mesmo motivo da barra lateral: a URL

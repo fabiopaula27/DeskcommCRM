@@ -96,12 +96,12 @@ type TemaDoLogo = z.infer<typeof temaSchema>;
  * sobe → grava → apaga — porque a única diferença é a coluna. O ícone só existe
  * na INSTALAÇÃO: a aba é a mesma para todas as organizações.
  */
-const pecaSchema = z.enum(["logo", "icone"]).default("logo");
+const pecaSchema = z.enum(["logo", "icone", "login"]).default("logo");
 type PecaDaMarca = z.infer<typeof pecaSchema>;
 /** O que se está trocando: a peça e, para o logo, o tema. */
 type Alvo = { readonly peca: PecaDaMarca; readonly tema: TemaDoLogo };
 const campoDoLogo = ({ peca, tema }: Alvo) =>
-  peca === "icone" ? "favicon_path" : tema === "escuro" ? "logo_dark_path" : "logo_path";
+  peca === "icone" ? "favicon_path" : peca === "login" ? "login_logo_path" : tema === "escuro" ? "logo_dark_path" : "logo_path";
 
 /** Lê `peca` e `tema` juntos e recusa o ícone fora da instalação. */
 function lerAlvo(
@@ -113,7 +113,7 @@ function lerAlvo(
   if (!pecaLida.success) return { mensagem: "Campo 'peca' inválido." };
   const temaLido = temaSchema.safeParse(tema ?? undefined);
   if (!temaLido.success) return { mensagem: "Campo 'tema' inválido." };
-  if (pecaLida.data === "icone" && escopo !== "instalacao") {
+  if ((pecaLida.data === "icone" || pecaLida.data === "login") && escopo !== "instalacao") {
     return { mensagem: "O ícone da aba é da instalação, não de uma organização." };
   }
   return { alvo: { peca: pecaLida.data, tema: temaLido.data } };
@@ -242,7 +242,7 @@ async function caminhoGravado(ctx: Contexto, alvo: Alvo): Promise<string | null>
     .eq("id", ctx.orgId)
     .maybeSingle();
   // `lerAlvo` já recusou o ícone fora da instalação: aqui o campo é de logo.
-  if (campo === "favicon_path") return null;
+  if (campo === "favicon_path" || campo === "login_logo_path") return null;
   return marcaDaOrganizacaoDeSettings(data?.settings ?? null)?.[campo] ?? null;
 }
 

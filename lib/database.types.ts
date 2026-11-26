@@ -12205,6 +12205,7 @@ export type Database = {
           fallback_reason: string | null;
           favicon_path: string | null;
           id: number;
+          login_logo_path: string | null;
           logo_dark_path: string | null;
           logo_path: string | null;
           logo_url: string | null;
@@ -12222,6 +12223,7 @@ export type Database = {
           fallback_reason?: string | null;
           favicon_path?: string | null;
           id?: number;
+          login_logo_path?: string | null;
           logo_dark_path?: string | null;
           logo_path?: string | null;
           logo_url?: string | null;
@@ -12238,6 +12240,7 @@ export type Database = {
           fallback_reason?: string | null;
           favicon_path?: string | null;
           id?: number;
+          login_logo_path?: string | null;
           logo_dark_path?: string | null;
           logo_path?: string | null;
           logo_url?: string | null;

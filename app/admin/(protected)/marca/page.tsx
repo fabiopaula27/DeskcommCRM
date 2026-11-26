@@ -9,6 +9,7 @@ import {
 } from "@/lib/branding/css-personalizado";
 import { marcaDaInstalacao } from "@/lib/branding/instalacao";
 import { logoDaCamada } from "@/lib/branding/logo";
+import { logoDoLogin } from "@/lib/branding/logo-do-login";
 import { REGUA_DO_PRODUTO } from "@/lib/branding/regua-do-produto";
 import { camadaDaInstalacao, camadaDoAmbiente, resolverMarca } from "@/lib/branding/resolve";
 import { env } from "@/lib/env";
@@ -70,11 +71,12 @@ export default async function Page() {
   if (!usuario?.is_platform_admin) notFound();
   const idioma = normalizarIdioma(usuario.locale);
 
-  const [linha, cssPersonalizado, temasInstalados, temaEscolhido] = await Promise.all([
+  const [linha, cssPersonalizado, temasInstalados, temaEscolhido, logoDoLoginUrl] = await Promise.all([
     marcaDaInstalacao(),
     cssPersonalizadoDaInstalacao(),
     temasInstaladosDaPlataforma(),
     idDoTemaDaPlataforma(),
+    logoDoLogin(),
   ]);
   const validacaoCss = validarCssPersonalizado(cssPersonalizado);
   // A MESMA pilha do `app/layout.tsx` — banco acima, arquivo de instalação
@@ -120,6 +122,7 @@ export default async function Page() {
         logoEscuroEmVigor={marca.logoDarkUrl}
         // Mesma conversão caminho → URL do logo; `null` sem arquivo subido.
         iconeDaAba={logoDaCamada(linha?.favicon_path, null)}
+        logoDoLogin={logoDoLoginUrl}
         logoDoAmbiente={semOArquivo.logoUrl}
         origens={marca.origens}
         // `seeded_from_env` ligado significa que a linha é cópia do arquivo de
