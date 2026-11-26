@@ -66,6 +66,8 @@ export async function GET(req: NextRequest): Promise<Response> {
   const p = produtos.data as Produtos;
 
   const dias = preencherDias([] as { dia: string }[], ctx.from, ctx.to, ctx.tz, (dia) => ({ dia })).map((d) => d.dia);
+  const serieDaMeta = metaVsRealizadoPorDia(m.meses, dias, m.realizado_por_dia);
+  const metaDaJanela = Math.round((serieDaMeta.at(-1)?.meta ?? 0) * 100) / 100;
   const nomes = await nomesDasPessoas([
     ...m.por_vendedor.map((v) => v.user_id),
     ...p.por_vendedor.map((v) => v.user_id),
@@ -77,10 +79,11 @@ export async function GET(req: NextRequest): Promise<Response> {
       periodo: { from: ctx.from.toISOString(), to: ctx.to.toISOString(), tz: ctx.tz },
       metas: {
         metas_total: m.metas_total,
-        alvo: m.alvo_empresa > 0 ? m.alvo_empresa : m.alvo_por_funis,
+        // Meta proporcional aos dias da janela em cada mês (empresa, senão soma dos funis).
+        alvo: metaDaJanela,
         realizado: m.realizado,
         receita_cents: m.receita_cents,
-        meta_vs_realizado: metaVsRealizadoPorDia(m.meses, dias, m.realizado_por_dia),
+        meta_vs_realizado: serieDaMeta,
         por_funil: m.por_funil,
         por_vendedor: m.por_vendedor.map(comNome(nomes)),
       },

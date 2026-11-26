@@ -80,5 +80,7 @@ describe("GET /api/v1/reports/metas", () => {
       { dia: "2026-11-02", meta: 2, realizado: 2 },
     ]);
     expect(corpo.data.produtos.por_hora).toHaveLength(24);
+    // Janela de 2 dias num mês de 30 com meta 30: a meta da janela é 2, não 30.
+    expect(corpo.data.metas.alvo).toBe(2);
   });
 });

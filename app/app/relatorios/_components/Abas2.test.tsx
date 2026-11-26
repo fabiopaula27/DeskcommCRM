@@ -52,6 +52,21 @@ describe("AbaMetasEProdutos", () => {
   });
 });
 
+describe("AbaMetasEProdutos com vendedor escolhido", () => {
+  it("não compara o vendedor com a meta da empresa", async () => {
+    const { fireEvent } = await import("@testing-library/react");
+    responde({
+      disponivel: true,
+      metas: { metas_total: 1, alvo: 40, realizado: 10, receita_cents: 0, meta_vs_realizado: [], por_funil: [], por_vendedor: [] },
+      produtos: produtosVazios,
+    });
+    render(<AbaMetasEProdutos filtros={filtros} moeda="BRL" pessoas={[{ user_id: "u1", nome: "Ana" }]} />);
+    fireEvent.change(screen.getByLabelText("Filtrar por vendedor"), { target: { value: "u1" } });
+    expect(screen.queryByText("25,0%")).toBeNull();
+    expect(screen.getByText(/A meta é da empresa/)).toBeTruthy();
+  });
+});
+
 describe("AbaTemplates", () => {
   it("taxa de resposta e gasto estimado", () => {
     responde({

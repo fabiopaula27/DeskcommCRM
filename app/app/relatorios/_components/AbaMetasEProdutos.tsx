@@ -70,7 +70,8 @@ export function AbaMetasEProdutos({
   const p = d.produtos;
   const dinheiro = (c: number) => formatarMoeda(c, moeda);
   const atingimento = razao(m.realizado, m.alvo);
-  const temMeta = m.alvo > 0;
+  // Meta é da empresa ou do funil, nunca da pessoa: com vendedor escolhido não há atingimento.
+  const temMeta = m.alvo > 0 && !dono;
 
   const filtro = (
     <select
@@ -95,7 +96,11 @@ export function AbaMetasEProdutos({
         descricao={t("Meta de quantidade de vendas ganhas no período, cadastrada em Desempenho.")}
         acao={filtro}
       >
-        {!temMeta ? (
+        {dono ? (
+          <p className="mb-4 rounded-md border border-dashed border-border bg-bg p-4 text-sm text-text-muted">
+            {t("A meta é da empresa e dos funis, não de cada vendedor. Aqui aparecem só as vendas da pessoa escolhida.")}
+          </p>
+        ) : !temMeta ? (
           <p className="mb-4 rounded-md border border-dashed border-border bg-bg p-4 text-sm text-text-muted">
             {t("Nenhuma meta cadastrada para este período. Cadastre a meta do mês em Análise › Desempenho para acompanhar o atingimento aqui.")}
           </p>

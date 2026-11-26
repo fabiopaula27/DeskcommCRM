@@ -3,7 +3,11 @@
 -- Metas: `crm_metas` só tem o indicador `vendas_ganhas` (quantidade por mês, da empresa
 -- ou por funil); o realizado é o mesmo de Métricas (status 'won', closed_at na janela).
 -- Produtos: itens de propostas ACEITAS (`crm_proposals.status = 'aceita'`, decided_at na janela).
--- Templates: mensagens `type = 'template'` enviadas; respondida = entrada na mesma conversa em até 24 h.
+-- Templates: mensagens `type = 'template'` enviadas (por `sent_at`, a coluna indexada e a régua das métricas);
+-- respondida = entrada na mesma conversa em até 24 h.
+create index if not exists idx_messages_template_enviado
+  on public.messages (organization_id, sent_at)
+  where type = 'template' and direction = 'outbound';
 
 create or replace function public.fn_relatorio_metas(
   p_org uuid, p_from timestamptz, p_to timestamptz, p_tz text, p_owner uuid default null
@@ -30,7 +34,11 @@ select jsonb_build_object(
   'receita_cents', (select coalesce(sum(value_cents), 0) from ganhos),
   'meses', coalesce((
     select jsonb_agg(jsonb_build_object('periodo', periodo, 'alvo', alvo) order by periodo)
-    from meses where pipeline_id is null
+    from (
+      select periodo,
+        coalesce(sum(alvo) filter (where pipeline_id is null), sum(alvo) filter (where pipeline_id is not null)) as alvo
+      from meses group by periodo
+    ) efetivo
   ), '[]'::jsonb),
   'realizado_por_dia', coalesce((
     select jsonb_agg(jsonb_build_object('dia', dia, 'total', total) order by dia)
@@ -61,11 +69,11 @@ create or replace function public.fn_relatorio_produtos(
 language sql stable security invoker set search_path = '' as $$
 with itens as (
   select
-    i.product_id,
+    coalesce(i.product_id::text, 'livre:' || lower(btrim(i.descricao))) as chave,
     coalesce(cp.nome, i.descricao) as nome,
     i.quantidade,
-    (i.quantidade * i.preco_unitario_cents - i.desconto_cents) as receita_cents,
-    i.desconto_cents,
+    greatest(i.quantidade * coalesce(i.preco_unitario_cents, 0) - coalesce(i.desconto_cents, 0), 0) as receita_cents,
+    coalesce(i.desconto_cents, 0) as desconto_cents,
     p.decided_at,
     l.owner_user_id
   from public.crm_proposal_items i
@@ -78,7 +86,7 @@ with itens as (
     and (p_owner is null or l.owner_user_id = p_owner)
 )
 select jsonb_build_object(
-  'produtos_distintos', (select count(distinct coalesce(product_id::text, nome)) from itens),
+  'produtos_distintos', (select count(distinct chave) from itens),
   'itens_vendidos', (select coalesce(sum(quantidade), 0) from itens),
   'receita_cents', (select coalesce(sum(receita_cents), 0) from itens),
   'descontos_cents', (select coalesce(sum(desconto_cents), 0) from itens),
@@ -96,8 +104,8 @@ select jsonb_build_object(
     select jsonb_agg(jsonb_build_object(
       'nome', nome, 'quantidade', qtd, 'receita_cents', receita, 'descontos_cents', descontos
     ) order by receita desc)
-    from (select nome, sum(quantidade) as qtd, sum(receita_cents) as receita, sum(desconto_cents) as descontos
-          from itens group by nome order by sum(receita_cents) desc limit 20) s
+    from (select min(nome) as nome, sum(quantidade) as qtd, sum(receita_cents) as receita, sum(desconto_cents) as descontos
+          from itens group by chave order by sum(receita_cents) desc limit 20) s
   ), '[]'::jsonb),
   'por_vendedor', coalesce((
     select jsonb_agg(jsonb_build_object('user_id', uid, 'itens', qtd, 'receita_cents', receita) order by receita desc)
@@ -113,10 +121,10 @@ create or replace function public.fn_relatorio_templates(
 language sql stable security invoker set search_path = '' as $$
 with
   enviados as (
-    select m.id, m.conversation_id, m.created_at, m.template_name
+    select m.id, m.conversation_id, m.sent_at, m.template_name
     from public.messages m
     where m.organization_id = p_org and m.direction = 'outbound' and m.type = 'template'
-      and m.created_at >= p_from and m.created_at < p_to
+      and m.sent_at >= p_from and m.sent_at < p_to
       and m.template_name is not null
       and (p_template is null or m.template_name = p_template)
   ),
@@ -126,7 +134,7 @@ with
         select 1 from public.messages r
         where r.organization_id = p_org and r.conversation_id = e.conversation_id
           and r.direction = 'inbound'
-          and r.created_at > e.created_at and r.created_at <= e.created_at + interval '24 hours'
+          and r.sent_at > e.sent_at and r.sent_at <= e.sent_at + interval '24 hours'
       ) as respondido
     from enviados e
   ),
@@ -141,7 +149,7 @@ select jsonb_build_object(
   'respondidos', (select count(*) from marcados where respondido),
   'por_dia', coalesce((
     select jsonb_agg(jsonb_build_object('dia', dia, 'enviados', env, 'respondidos', resp) order by dia)
-    from (select (created_at at time zone p_tz)::date as dia, count(*) as env, count(*) filter (where respondido) as resp
+    from (select (sent_at at time zone p_tz)::date as dia, count(*) as env, count(*) filter (where respondido) as resp
           from marcados group by 1) s
   ), '[]'::jsonb),
   'por_template', coalesce((
