@@ -880,6 +880,16 @@ export const NAV_CATALOG = [
     modulo: "honorarios",
   },
   {
+    href: "/app/relatorios",
+    label: "Relatórios",
+    minRole: "manager",
+    description: "Atendimento, vendas e funil do período, com PDF.",
+    icon: "ChartLineUp",
+    group: "analise",
+    section: "Os números do período",
+    sidebar: true,
+  },
+  {
     href: "/app/metrics",
     label: "Desempenho",
     description: "Funil e performance por atendente nos últimos 30 dias.",
