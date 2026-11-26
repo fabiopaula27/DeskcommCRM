@@ -91,6 +91,16 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   const token = credencial.credencial.accessToken;
   const contaId = parsed.data.account_id;
+  // Conta fora da lista liberada em Configurações › Meta Ads: recusada aqui,
+  // não só escondida na tela.
+  if (!credencial.credencial.contasPermitidas.includes(contaId)) {
+    return fail(
+      "forbidden_account",
+      "Esta conta de anúncios não está liberada. Adicione-a em Configurações › Meta Ads.",
+      403,
+      { requestId },
+    );
+  }
 
   const [campanhas, insights] = await Promise.all([
     lerCampanhas(token, contaId),

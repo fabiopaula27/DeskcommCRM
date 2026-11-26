@@ -1,6 +1,7 @@
 "use server";
 
 import { ipDoCliente } from "@/lib/http/ip-do-cliente";
+import { gravarContasPermitidas } from "@/lib/plataformas-de-anuncio/contas-permitidas";
 import { supportWriteError } from "@/lib/impersonate/support";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
@@ -78,12 +79,11 @@ const entradaSchema = z.object({
    * abaixo: sem linha gravada, não há o que manter.
    */
   access_token: z.string().trim().min(20).max(1000).optional(),
-  default_account_id: z
-    .string()
-    .trim()
-    .regex(/^act_\d+$/, "conta no formato act_<id>")
-    .nullable()
-    .optional(),
+  /** Conta padrão (obrigatória) e as adicionais. A primeira é a padrão. */
+  contas: z
+    .array(z.string().trim().regex(/^act_\d+$/, "conta no formato act_<id>"))
+    .min(1, "informe a conta padrão")
+    .max(50),
 });
 
 export type AdInsightsConnectionInput = z.infer<typeof entradaSchema>;
@@ -141,9 +141,7 @@ export async function updateAdInsightsConnection(
 
   // `undefined` = não mexer; `null` = limpar a escolha de conta padrão. Os dois
   // são pedidos diferentes e o schema os distingue (`.nullable().optional()`).
-  if (parsed.data.default_account_id !== undefined) {
-    valores.default_account_id = parsed.data.default_account_id;
-  }
+  valores.default_account_id = gravarContasPermitidas(parsed.data.contas);
 
   if (parsed.data.access_token) {
     const cifrado = await encryptWebhookSecret(admin, parsed.data.access_token);
@@ -175,7 +173,7 @@ export async function updateAdInsightsConnection(
       platform: parsed.data.platform,
       // O QUE mudou, jamais o valor. O id da conta pode ir (é identificador,
       // não segredo); o token não entra nem em metadata.
-      default_account_id: parsed.data.default_account_id ?? null,
+      contas: parsed.data.contas,
       token_trocado: Boolean(parsed.data.access_token),
       primeira_conexao: !existente,
     },

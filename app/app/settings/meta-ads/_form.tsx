@@ -34,11 +34,11 @@ const ERRO_EM_PORTUGUES: Record<string, string> = {
 
 export function FormularioDeMetaAds({
   conectada,
-  contaPadrao,
+  contasPermitidas,
   idioma,
 }: {
   conectada: boolean;
-  contaPadrao: string | null;
+  contasPermitidas: string[];
   idioma: Idioma;
 }) {
   const t = (texto: string) => traduzir(texto, idioma);
@@ -46,12 +46,16 @@ export function FormularioDeMetaAds({
   const [isPending, startTransition] = useTransition();
 
   const [token, setToken] = useState("");
-  const [conta, setConta] = useState(contaPadrao ?? "");
+  const [conta, setConta] = useState(contasPermitidas[0] ?? "");
+  const [extras, setExtras] = useState<string[]>(contasPermitidas.slice(1));
+  const FORMATO = /^act_\d+$/;
+  const contaValida = FORMATO.test(conta.trim());
+  const extrasValidas = extras.every((e) => e.trim() === "" || FORMATO.test(e.trim()));
 
   // Na primeira conexão o token é obrigatório — a coluna é NOT NULL (0214) e a
   // Server Action recusa. Barrar aqui explica antes de o clique acontecer, em
   // vez de devolver um erro de validação depois.
-  const podeSalvar = conectada || token.trim().length >= 20;
+  const podeSalvar = (conectada || token.trim().length >= 20) && contaValida && extrasValidas;
 
   function salvar(evento: React.FormEvent) {
     evento.preventDefault();
@@ -59,7 +63,7 @@ export function FormularioDeMetaAds({
       const resultado = await updateAdInsightsConnection({
         platform: "meta_ads",
         access_token: token.trim() || undefined,
-        default_account_id: conta.trim() || null,
+        contas: [conta.trim(), ...extras.map((e) => e.trim()).filter(Boolean)],
       });
 
       if (resultado.ok) {
@@ -80,6 +84,7 @@ export function FormularioDeMetaAds({
       if (resultado.ok) {
         setToken("");
         setConta("");
+        setExtras([]);
         toast.success(t("Conta desconectada."));
         router.refresh();
         return;
@@ -111,17 +116,53 @@ export function FormularioDeMetaAds({
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="default_account_id">{t("Conta padrão (opcional)")}</Label>
+          <Label htmlFor="default_account_id">{t("Conta padrão")}</Label>
           <Input
             id="default_account_id"
+            required
             value={conta}
             onChange={(e) => setConta(e.target.value)}
             placeholder="act_123456789012345"
           />
           <p className="text-xs text-muted-foreground">
             {t(
-              "A conta que a tela de Meta Ads abre por padrão. Em branco, ela abre a primeira conta ativa que o token alcançar.",
+              "Obrigatória. A tela de Meta Ads mostra só as contas informadas aqui, mesmo que o token alcance outras.",
             )}
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Label>{t("Outras contas de anúncio")}</Label>
+          {extras.map((valor, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input
+                aria-label={`${t("Conta adicional")} ${i + 1}`}
+                value={valor}
+                onChange={(e) =>
+                  setExtras((atual) => atual.map((v, j) => (j === i ? e.target.value : v)))
+                }
+                placeholder="act_123456789012345"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setExtras((atual) => atual.filter((_, j) => j !== i))}
+              >
+                {t("Remover")}
+              </Button>
+            </div>
+          ))}
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setExtras((atual) => [...atual, ""])}
+            >
+              + {t("Adicionar conta de anúncio")}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {t("Usam o mesmo token. Formato act_ seguido dos números da conta.")}
           </p>
         </div>
 
@@ -143,7 +184,11 @@ export function FormularioDeMetaAds({
 
           {!podeSalvar && (
             <span className="text-sm text-muted-foreground">
-              {t("Cole o token para poder salvar.")}
+              {!contaValida
+                ? t("Informe a conta padrão no formato act_123456789.")
+                : !extrasValidas
+                  ? t("Confira as outras contas: use o formato act_123456789.")
+                  : t("Cole o token para poder salvar.")}
             </span>
           )}
         </div>

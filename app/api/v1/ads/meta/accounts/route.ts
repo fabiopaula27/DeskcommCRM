@@ -43,9 +43,17 @@ export async function GET(): Promise<Response> {
   const contas = await listarContas(credencial.credencial.accessToken);
   if (!contas.ok) return respostaDeFalha(contas.falha, contas.detalhe, { requestId });
 
+  // Só as contas liberadas em Configurações › Meta Ads. O token pode alcançar
+  // contas de outros clientes do gestor; elas não aparecem aqui.
+  const permitidas = new Set(credencial.credencial.contasPermitidas);
+  const ordem = credencial.credencial.contasPermitidas;
+  const liberadas = contas.dados
+    .filter((c) => permitidas.has(c.id))
+    .sort((a, b) => ordem.indexOf(a.id) - ordem.indexOf(b.id));
+
   return ok(
     {
-      contas: contas.dados,
+      contas: liberadas,
       conta_padrao: credencial.credencial.contaPadrao,
     },
     { requestId },

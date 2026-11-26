@@ -79,7 +79,7 @@ export default async function MetaAdsSettingsPage() {
 
       <FormularioDeMetaAds
         conectada={conexao.conectada}
-        contaPadrao={conexao.contaPadrao}
+        contasPermitidas={conexao.contasPermitidas}
         idioma={idioma}
       />
 

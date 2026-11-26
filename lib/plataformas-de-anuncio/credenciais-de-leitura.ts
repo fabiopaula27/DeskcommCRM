@@ -19,6 +19,7 @@
  * sessão isto não devolve nada — nem erro, só vazio.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { lerContasPermitidas } from "./contas-permitidas";
 
 import { logger } from "@/lib/logger";
 import { decryptWebhookSecret } from "@/lib/webhooks/secrets";
@@ -79,7 +80,11 @@ export async function lerCredencialDeLeitura(
 
   return {
     ok: true,
-    credencial: { accessToken: token, contaPadrao: linha.default_account_id },
+    credencial: {
+      accessToken: token,
+      contaPadrao: lerContasPermitidas(linha.default_account_id)[0] ?? null,
+      contasPermitidas: lerContasPermitidas(linha.default_account_id),
+    },
   };
 }
 
@@ -95,7 +100,7 @@ export async function existeConexaoDeLeitura(
   admin: SupabaseClient,
   organizationId: string,
   plataforma: PlataformaDeAnuncio,
-): Promise<{ conectada: boolean; contaPadrao: string | null }> {
+): Promise<{ conectada: boolean; contaPadrao: string | null; contasPermitidas: string[] }> {
   const { data, error } = await admin
     .from("ad_insights_connections")
     .select("default_account_id")
@@ -109,9 +114,10 @@ export async function existeConexaoDeLeitura(
       plataforma,
       error: error.message,
     });
-    return { conectada: false, contaPadrao: null };
+    return { conectada: false, contaPadrao: null, contasPermitidas: [] };
   }
 
   const linha = data as { default_account_id: string | null } | null;
-  return { conectada: Boolean(linha), contaPadrao: linha?.default_account_id ?? null };
+  const contas = lerContasPermitidas(linha?.default_account_id);
+  return { conectada: Boolean(linha), contaPadrao: contas[0] ?? null, contasPermitidas: contas };
 }
