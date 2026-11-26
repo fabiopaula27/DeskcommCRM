@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiClient } from "@/lib/api/client";
 
-export type AbaDoRelatorio = "atendimento" | "leads" | "funil";
+export type AbaDoRelatorio = "atendimento" | "leads" | "funil" | "metas" | "templates";
 
 export type Indisponivel = { disponivel: false; motivo: string };
 

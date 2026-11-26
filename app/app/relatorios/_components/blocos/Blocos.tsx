@@ -10,6 +10,8 @@ import {
   AreaChart,
   CartesianGrid,
   Cell,
+  Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -164,6 +166,83 @@ export function GraficoPorDia<T extends { dia: string }>({
           <Area type="monotone" dataKey={chave as string} stroke={cor} strokeWidth={2} fill={`url(#${id})`} />
         </AreaChart>
       </ResponsiveContainer>
+    </div>
+  );
+}
+
+/** Duas séries por dia no mesmo gráfico (ex.: meta × realizado, enviados × respondidos). */
+export function GraficoDeDuasLinhas<T extends { dia: string }>({
+  serie,
+  a,
+  b,
+  formatar = (n: number) => formatarNumero(n),
+  altura = 240,
+}: {
+  serie: T[];
+  a: { chave: keyof T & string; rotulo: string; cor: string; tracejada?: boolean };
+  b: { chave: keyof T & string; rotulo: string; cor: string };
+  formatar?: (n: number) => string;
+  altura?: number;
+}) {
+  return (
+    <div>
+      <div className="mb-2 flex gap-4 text-xs text-text-muted">
+        <span className="flex items-center gap-1.5">
+          <span className="h-0.5 w-4" style={{ background: a.cor }} /> {a.rotulo}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-0.5 w-4" style={{ background: b.cor }} /> {b.rotulo}
+        </span>
+      </div>
+      <div style={{ height: altura }} className="w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={serie} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
+            <CartesianGrid vertical={false} stroke="var(--color-border)" />
+            <XAxis
+              dataKey="dia"
+              tickFormatter={(v: string) => rotuloDoDia(v)}
+              tick={{ fontSize: 11, fill: "var(--color-text-subtle)" }}
+              tickLine={false}
+              axisLine={false}
+              minTickGap={16}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: "var(--color-text-subtle)" }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v: number) => formatar(v)}
+            />
+            <Tooltip
+              labelFormatter={(v) => rotuloDoDia(String(v))}
+              formatter={(v) => formatar(Number(v))}
+              contentStyle={{ borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 12 }}
+            />
+            <Line
+              type="monotone"
+              dataKey={a.chave as string}
+              name={a.rotulo}
+              stroke={a.cor}
+              strokeWidth={2}
+              strokeDasharray={a.tracejada ? "5 4" : undefined}
+              dot={false}
+            />
+            <Line type="monotone" dataKey={b.chave as string} name={b.rotulo} stroke={b.cor} strokeWidth={2} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+/** Barra de progresso de um número contra a meta. */
+export function Progresso({ fracao }: { fracao: number }) {
+  const pct = Math.max(0, Math.min(1, fracao)) * 100;
+  return (
+    <div className="h-2 w-full rounded-full bg-surface-elevated" role="progressbar" aria-valuenow={Math.round(pct)}>
+      <div
+        className="h-2 rounded-full"
+        style={{ width: `${pct}%`, background: fracao >= 1 ? "var(--color-success)" : "var(--color-accent)" }}
+      />
     </div>
   );
 }
