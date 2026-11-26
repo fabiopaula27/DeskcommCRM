@@ -31,9 +31,14 @@ function deslocamentoMs(instante: Date, tz: string): number {
   return comoUtc - Math.floor(instante.getTime() / 1000) * 1000;
 }
 
+function partes(ymd: string): [number, number, number] {
+  const [y = 1970, m = 1, d = 1] = ymd.split("-").map(Number);
+  return [y, m, d];
+}
+
 /** O instante da meia-noite do dia `ymd` no fuso. */
 export function inicioDoDia(ymd: string, tz: string): Date {
-  const [y, m, d] = ymd.split("-").map(Number);
+  const [y, m, d] = partes(ymd);
   const palpite = Date.UTC(y, m - 1, d);
   const primeiro = palpite - deslocamentoMs(new Date(palpite), tz);
   // Segunda passada corrige a virada de horário de verão.
@@ -41,7 +46,7 @@ export function inicioDoDia(ymd: string, tz: string): Date {
 }
 
 export function somarDias(ymd: string, n: number): string {
-  const [y, m, d] = ymd.split("-").map(Number);
+  const [y, m, d] = partes(ymd);
   return new Date(Date.UTC(y, m - 1, d) + n * DIA_MS).toISOString().slice(0, 10);
 }
 
