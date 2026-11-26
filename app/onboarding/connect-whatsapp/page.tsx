@@ -4,6 +4,7 @@ import { fontesDoAppDaMeta } from "@/lib/channels/meta/app";
 import { metaPodeReceber } from "@/lib/channels/meta/webhook";
 import { nomeCurtoDaSessao } from "@/lib/channels/nome-da-sessao";
 import { getWahaClient } from "@/lib/waha/client";
+import { evolutionConfigurado } from "@/lib/channels/evolution/credentials";
 import { ConnectWhatsappClient } from "./_client";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { perfilDoPais } from "@/lib/legal/perfil-do-pais";
@@ -44,6 +45,7 @@ export default async function ConnectWhatsappPage() {
       </p>
       <ConnectWhatsappClient
         wahaConfigured={wahaConfigured}
+        evolutionConfigured={evolutionConfigurado()}
         sessionName={nomeCurtoDaSessao(activeOrg.orgId)}
         oficialPodeReceber={oficialPodeReceber}
         telefoneExemplo={perfilDoPais(activeOrg.country).telefoneExemplo}

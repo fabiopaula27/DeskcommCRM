@@ -10,9 +10,12 @@ import { Button } from "@/components/ui/button";
 import { skipWhatsapp, markWhatsappConfigured } from "@/app/actions/onboarding/skipWhatsapp";
 import { CanalOficialClient } from "@/components/connections/CanalOficialClient";
 import { CanalParceiroClient } from "@/components/connections/CanalParceiroClient";
+import { CanalEvolutionClient } from "@/components/connections/CanalEvolutionClient";
 
 interface Props {
   wahaConfigured: boolean;
+  /** Com a Evolution configurada, o caminho do QR usa ela (canal principal) e não o WAHA. */
+  evolutionConfigured?: boolean;
   sessionName: string;
   /**
    * A volta do canal oficial depende de um valor que mora no `.env` do
@@ -222,12 +225,15 @@ function Saidas({ status, sessionName }: { status: Status; sessionName: string }
 }
 
 export function ConnectWhatsappClient({
-  wahaConfigured,
+  wahaConfigured: wahaNoServidor,
+  evolutionConfigured = false,
   sessionName,
   oficialPodeReceber,
   telefoneExemplo,
 }: Props) {
   const t = useT();
+  // Evolution é a principal: com ela no ar, o WAHA não sobe sessão aqui.
+  const wahaConfigured = wahaNoServidor && !evolutionConfigured;
   const [pending, startTransition] = useTransition();
   const [forma, setForma] = useState<Forma | null>(null);
   const createKey = useRef<string | null>(null);
@@ -417,6 +423,28 @@ export function ConnectWhatsappClient({
             contra o outro lado ANTES de gravar — e duas cópias divergem. */}
         {forma === "oficial" ? <CanalOficialClient /> : <CanalParceiroClient />}
 
+        <Saidas status={status} sessionName={info.session ?? ""} />
+      </div>
+    );
+  }
+
+  if (evolutionConfigured) {
+    return (
+      <div className="space-y-4 rounded-lg border bg-background p-6">
+        <VoltarParaEscolha onVoltar={() => setForma(null)} />
+        <CanalEvolutionClient
+          isConfigured
+          onConectou={(sessao) =>
+            startTransition(async () => {
+              try {
+                await markWhatsappConfigured(sessao.waha_session_name ?? sessao.id, "WORKING");
+              } catch (err) {
+                if (isRedirectError(err)) throw err;
+                toast.error(`${t("Falha ao avançar:")} ${String(err)}`);
+              }
+            })
+          }
+        />
         <Saidas status={status} sessionName={info.session ?? ""} />
       </div>
     );

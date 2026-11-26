@@ -42,7 +42,14 @@ function rotuloDoStatus(status: string, t: (s: string) => string): string {
   return status;
 }
 
-export function CanalEvolutionClient({ isConfigured }: { isConfigured: boolean }) {
+export function CanalEvolutionClient({
+  isConfigured,
+  onConectou,
+}: {
+  isConfigured: boolean;
+  /** Primeiro acesso: avisa quando o número ficou WORKING, para avançar o assistente. */
+  onConectou?: (sessao: ChannelSession) => void;
+}) {
   const t = useT();
   const [sessoes, setSessoes] = useState<ChannelSession[]>([]);
   const [conectando, setConectando] = useState<string | null>(null);
@@ -91,7 +98,10 @@ export function CanalEvolutionClient({ isConfigured }: { isConfigured: boolean }
         const paradoSemTolerancia = atual?.status === "STOPPED" && Date.now() >= toleraParadoAte.current;
         if (!atual || atual.status === "WORKING" || atual.status === "FAILED" || paradoSemTolerancia) {
           setConectando(null);
-          if (atual?.status === "WORKING") setConectou(true);
+          if (atual?.status === "WORKING") {
+            setConectou(true);
+            onConectou?.(atual);
+          }
           return;
         }
         const r = await apiClient.get<{ data: { qr_base64: string | null } }>(
@@ -109,7 +119,7 @@ export function CanalEvolutionClient({ isConfigured }: { isConfigured: boolean }
       vivo = false;
       if (timer) clearTimeout(timer);
     };
-  }, [conectando, carregar]);
+  }, [conectando, carregar, onConectou]);
 
   const comecar = async (id: string, qrInicial: string | null) => {
     setQr(qrInicial);
