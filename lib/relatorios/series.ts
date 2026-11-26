@@ -24,7 +24,7 @@ export function preencherHoras(
   return Array.from({ length: 24 }, (_, hora) => ({ hora, total: porHora.get(hora) ?? 0 }));
 }
 
-export type Variacao = { tipo: "novo" | "igual" } | { tipo: "pct"; pct: number };
+export type Variacao = { tipo: "novo" } | { tipo: "igual" } | { tipo: "pct"; pct: number };
 
 export function variacao(hoje: number, ontem: number): Variacao {
   if (hoje === ontem) return { tipo: "igual" };
