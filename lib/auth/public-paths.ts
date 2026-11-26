@@ -240,6 +240,8 @@ export const PUBLIC_PATHS: RegExp[] = [
   // dois nomes de propósito: `/^\/legal/` deixaria qualquer sub-path futuro
   // nascer público de carona.
   /^\/legal\/(terms|privacy)$/,
+  // Endereços em português das mesmas páginas (reescritos em next.config.ts).
+  /^\/(politica-de-privacidade|termos-de-servico)\/?$/,
 ];
 
 export function isPublicPath(pathname: string): boolean {

@@ -89,6 +89,14 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "*.supabase.in" },
     ],
   },
+  // Endereços públicos em português para as páginas legais (o endereço na barra
+  // continua o pedido; o conteúdo é o de /legal/privacy e /legal/terms).
+  async rewrites() {
+    return [
+      { source: "/politica-de-privacidade", destination: "/legal/privacy" },
+      { source: "/termos-de-servico", destination: "/legal/terms" },
+    ];
+  },
   async headers() {
     return [
       {
