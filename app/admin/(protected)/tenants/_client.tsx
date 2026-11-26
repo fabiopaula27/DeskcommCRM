@@ -28,13 +28,13 @@ export function TenantsClient() {
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">{t("Clientes")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {isLoading ? t("Carregando...") : `${total} tenant${total !== 1 ? "s" : ""}${hasNextPage ? "+" : ""}`}
+            {isLoading ? t("Carregando...") : `${total} cliente${total !== 1 ? "s" : ""}${hasNextPage ? "+" : ""}`}
           </p>
         </div>
         <Button asChild size="sm" className="shrink-0">
           <Link href="/admin/tenants/new">
             <Plus size={16} aria-hidden />
-            {t("Novo tenant")}
+            {t("Novo cliente")}
           </Link>
         </Button>
       </div>

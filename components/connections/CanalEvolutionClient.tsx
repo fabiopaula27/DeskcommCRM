@@ -199,7 +199,7 @@ export function CanalEvolutionClient({
         </div>
         <Button size="sm" disabled={criando} onClick={() => void conectar()}>
           {criando && <CircleNotch size={14} className="animate-spin" aria-hidden />}
-          {t("Conectar via Evolution")}
+          {t("Conectar novo WhatsApp")}
         </Button>
       </div>
 

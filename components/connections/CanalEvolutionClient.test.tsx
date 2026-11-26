@@ -62,13 +62,13 @@ afterEach(() => {
 it("sem configuração do servidor não mostra o botão", async () => {
   render(<CanalEvolutionClient isConfigured={false} />);
   await avancar(0);
-  expect(screen.queryByRole("button", { name: "Conectar via Evolution" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Conectar novo WhatsApp" })).toBeNull();
 });
 
 it("conectar mostra o QR e atualiza pela rota /qr a cada 5 s até conectar", async () => {
   render(<CanalEvolutionClient isConfigured />);
   await avancar(0);
-  fireEvent.click(screen.getByRole("button", { name: "Conectar via Evolution" }));
+  fireEvent.click(screen.getByRole("button", { name: "Conectar novo WhatsApp" }));
   await avancar(0);
   expect(h.post).toHaveBeenCalledWith(
     "/api/v1/channels/evolution",
@@ -97,7 +97,7 @@ it("resposta idempotente sem QR cai para a rota /qr", async () => {
   });
   render(<CanalEvolutionClient isConfigured />);
   await avancar(0);
-  fireEvent.click(screen.getByRole("button", { name: "Conectar via Evolution" }));
+  fireEvent.click(screen.getByRole("button", { name: "Conectar novo WhatsApp" }));
   await avancar(0);
   expect((screen.getByAltText("QR Code para conectar WhatsApp") as HTMLImageElement).src).toContain("QR1");
 });
@@ -131,7 +131,7 @@ it("Reconectar e Desconectar chamam as rotas", async () => {
 it("para de consultar ao desmontar", async () => {
   render(<CanalEvolutionClient isConfigured />);
   await avancar(0);
-  fireEvent.click(screen.getByRole("button", { name: "Conectar via Evolution" }));
+  fireEvent.click(screen.getByRole("button", { name: "Conectar novo WhatsApp" }));
   await avancar(0);
   cleanup();
   const chamadas = h.get.mock.calls.length;
