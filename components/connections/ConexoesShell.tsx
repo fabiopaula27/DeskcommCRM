@@ -116,7 +116,9 @@ export function ConexoesShell({
       <TabsContent value="numeros" className="mt-0">
         <div className="flex flex-col gap-4">
           <CanalEvolutionClient isConfigured={evolutionConfigured} />
-          <ConnectionsClient wahaConfigured={wahaConfigured} />
+          {/* Evolution é o canal principal: com ela configurada, o quadro do
+              WAHA fica escondido (reserva). Sem Evolution, o WAHA volta. */}
+          {!evolutionConfigured && <ConnectionsClient wahaConfigured={wahaConfigured} />}
         </div>
       </TabsContent>
 
