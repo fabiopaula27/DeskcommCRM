@@ -143,6 +143,7 @@ describe("CONTROLE: os canais que já existiam continuam declarados", () => {
       "zernio_social",
       "datafy",
       "evolution",
+      "meta_social",
     ]);
     for (const provider of PROVIDERS_DE_MENSAGEM) {
       const caps = capabilitiesOf(provider);

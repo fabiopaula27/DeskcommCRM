@@ -88,6 +88,20 @@ export const CHANNEL_CAPABILITIES: Record<ProviderDeMensagem, ChannelCapabilitie
     // agenda de celular a ler, e dizer `true` aqui seria um botão que só falha.
     phonebook: false,
   },
+  // Messenger e Instagram Direct pela conexão DIRETA com a Meta: só responde
+  // dentro de 24h da última mensagem do lead; sem custo por mensagem.
+  meta_social: {
+    freeformOutsideWindow: false,
+    requiresTemplates: false,
+    canManageTemplates: false,
+    banRisk: false,
+    minIntervalMs: 1000,
+    voiceNote: "server-convert",
+    groups: "none",
+    costPerMessage: false,
+    alteraMensagemEnviada: false,
+    phonebook: false,
+  },
   zernio: {
     freeformOutsideWindow: false,
     requiresTemplates: true,
@@ -165,6 +179,8 @@ export const CHANNEL_PROVIDER_SOCIAL: ChannelProvider = "zernio_social";
 export const CHANNEL_PROVIDER_ZERNIO: ChannelProvider = "zernio";
 /** Parceiro que espelha a Cloud API — canal opcional da instalação, desligado por padrão. */
 export const CHANNEL_PROVIDER_DATAFY: ChannelProvider = "datafy";
+/** Messenger e Instagram Direct pela conexão DIRETA com a Meta (migration 9116). */
+export const CHANNEL_PROVIDER_META_SOCIAL: ChannelProvider = "meta_social";
 /** WhatsApp por QR (Evolution API) — canal opcional da instalação, por env. */
 export const CHANNEL_PROVIDER_EVOLUTION: ChannelProvider = "evolution";
 /** Pergunta pura (segura no browser) em vez de a tela escrever o provider. */
@@ -205,6 +221,7 @@ export const PROVIDERS_DE_MENSAGEM = [
   "zernio_social",
   "datafy",
   "evolution",
+  "meta_social",
 ] as const satisfies readonly ProviderDeMensagem[];
 
 /**
@@ -226,7 +243,7 @@ export const PROVIDERS_DE_TELEFONE = [
   "meta_cloud",
   "zernio",
   "datafy",
-] as const satisfies readonly Exclude<(typeof PROVIDERS_DE_MENSAGEM)[number], "zernio_social">[];
+] as const satisfies readonly Exclude<(typeof PROVIDERS_DE_MENSAGEM)[number], "zernio_social" | "meta_social">[];
 
 /**
  * `true` quando a linha de `channel_sessions` é um canal de mensagem.
