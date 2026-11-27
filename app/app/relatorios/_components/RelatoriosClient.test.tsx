@@ -10,6 +10,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("./AbaAtendimento", () => ({ AbaAtendimento: () => <p>conteudo-atendimento</p> }));
 vi.mock("./AbaLeadsEVendas", () => ({ AbaLeadsEVendas: () => <p>conteudo-leads</p> }));
 vi.mock("./AbaIA", () => ({ AbaIA: () => <p>conteudo-ia</p> }));
+vi.mock("./AbaEnvioAgendado", () => ({ AbaEnvioAgendado: () => <p>conteudo-envio</p> }));
 vi.mock("./AbaFunil", () => ({ AbaFunil: () => <p>conteudo-funil</p> }));
 vi.mock("./AbaMetasEProdutos", () => ({ AbaMetasEProdutos: () => <p>conteudo-metas</p> }));
 vi.mock("./AbaTemplates", () => ({ AbaTemplates: () => <p>conteudo-templates</p> }));
@@ -50,12 +51,18 @@ describe("RelatoriosClient", () => {
     expect(screen.getByText("conteudo-funil")).toBeTruthy();
   });
 
-  it("aba ainda não construída avisa que chega na próxima etapa", () => {
+  it("botão PDF baixa o arquivo gerado no servidor para o período", () => {
+    render(<RelatoriosClient {...props} />);
+    const link = screen.getByRole("link", { name: "Baixar PDF" }) as HTMLAnchorElement;
+    expect(link.getAttribute("href")).toMatch(/^\/api\/v1\/reports\/pdf\?from=2026-11-01T03/);
+  });
+
+  it("aba Envio agendado mostra a configuração", () => {
     render(<RelatoriosClient {...props} />);
     const aba = screen.getByRole("tab", { name: "Envio agendado" });
     fireEvent.mouseDown(aba);
     fireEvent.click(aba);
-    expect(screen.getByText("Chega na próxima etapa dos relatórios.")).toBeTruthy();
+    expect(screen.getByText("conteudo-envio")).toBeTruthy();
   });
 });
 

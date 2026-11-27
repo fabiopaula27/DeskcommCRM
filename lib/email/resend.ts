@@ -45,6 +45,8 @@ interface SendArgs {
    * Ausente usa o endereço puro: quem não passa marca não ganha a nossa.
    */
   fromName?: string;
+  /** Arquivos anexados (ex.: o PDF do relatório agendado). */
+  attachments?: { filename: string; content: Buffer; contentType?: string }[];
 }
 
 interface SendResult {
@@ -140,6 +142,9 @@ export async function sendEmail(args: SendArgs): Promise<SendResult> {
       text: args.text,
       replyTo: args.replyTo,
       tags: args.tags,
+      ...(args.attachments?.length
+        ? { attachments: args.attachments.map((a) => ({ filename: a.filename, content: a.content })) }
+        : {}),
     });
 
     if (error) {

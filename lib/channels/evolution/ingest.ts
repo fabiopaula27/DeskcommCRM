@@ -21,6 +21,7 @@
  * do `workers/media-persist-worker.ts`, e a derivação é pedida pelo mesmo evento
  * que o worker emite.
  */
+import { ehEcoDoRelatorio } from "@/lib/relatorios/eco-do-envio";
 import { timingSafeEqual } from "node:crypto";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -151,6 +152,18 @@ async function ingerirMensagem(
     })
   ) {
     return { status: "ignored", reason: "numero_interno_de_aviso" };
+  }
+
+  // O PDF do relatório agendado volta como `fromMe`: não vira conversa (9113).
+  if (
+    msg.fromMe &&
+    (await ehEcoDoRelatorio(admin, input.organizationId, {
+      fromMe: true,
+      mime: msg.midia?.mimetype,
+      nomeArquivo: msg.midia?.nomeArquivo,
+    }))
+  ) {
+    return { status: "ignored", reason: "eco_do_relatorio" };
   }
 
   if (!lid && !telefone) return { status: "ignored", reason: "sem_identidade_utilizavel" };

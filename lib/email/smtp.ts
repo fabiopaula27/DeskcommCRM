@@ -12,6 +12,8 @@ interface SendArgs {
   replyTo?: string;
   fromName?: string;
   tags?: { name: string; value: string }[];
+  /** Arquivos anexados (ex.: o PDF do relatório agendado). */
+  attachments?: { filename: string; content: Buffer; contentType?: string }[];
 }
 export type EmailDeliveryError =
   "not_configured" | "send_failed" | "rate_limited" | "sender_rejected";
@@ -82,6 +84,15 @@ export async function sendEmail(args: SendArgs): Promise<SendResult> {
       html: args.html,
       text: args.text,
       replyTo: args.replyTo,
+      ...(args.attachments?.length
+        ? {
+            attachments: args.attachments.map((a) => ({
+              filename: a.filename,
+              content: a.content,
+              contentType: a.contentType,
+            })),
+          }
+        : {}),
     });
     return { ok: true, id: result.messageId };
   } catch (error) {

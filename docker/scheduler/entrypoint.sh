@@ -131,6 +131,10 @@ CRONS="
 # mais curto porque a janela é 7h–10h: se o número estiver parado às 7h, o
 # resumo sai assim que ele voltar. Quem não ligou o aviso não chega a ser varrido.
 */10 * * * *|60|api/v1/cron/agenda-resumo-do-dia
+# RELATÓRIOS › ENVIO AGENDADO (9113). De 15 em 15 minutos: quem decide a hora é
+# o relógio de CADA organização (diário, toda segunda ou todo dia 1, no horário
+# escolhido). Gera o PDF e envia por e-mail e WhatsApp; quem não agendou não é varrido.
+*/15 * * * *|300|api/v1/cron/report-schedules
 # A DATA DO FUNIL (#989). Mesma cadência e mesmo motivo do aniversário: de hora
 # em hora, e quem decide o momento é o relógio de parede de CADA organização —
 # a rodada só age naquela que marca a hora da varredura. Minuto diferente do

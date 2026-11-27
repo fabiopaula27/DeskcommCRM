@@ -15,6 +15,7 @@ import { useT } from "@/hooks/i18n/useT";
 import { inicioDoDia, somarDias } from "@/lib/relatorios/periodo";
 
 import { AbaAtendimento } from "./AbaAtendimento";
+import { AbaEnvioAgendado } from "./AbaEnvioAgendado";
 import { AbaFunil } from "./AbaFunil";
 import { AbaIA } from "./AbaIA";
 import { AbaLeadsEVendas } from "./AbaLeadsEVendas";
@@ -135,8 +136,14 @@ export function RelatoriosClient({
           <Button type="submit" disabled={periodoInvalido}>
             {t("Aplicar")}
           </Button>
-          <Button type="button" variant="outline" onClick={() => window.print()}>
-            {t("Baixar PDF")}
+          {/* PDF gerado no servidor: o mesmo arquivo do envio agendado. */}
+          <Button asChild variant="outline">
+            <a
+              href={`/api/v1/reports/pdf?${new URLSearchParams({ from: filtros.from, to: filtros.to }).toString()}`}
+              download
+            >
+              {t("Baixar PDF")}
+            </a>
           </Button>
         </form>
       </header>
@@ -175,13 +182,9 @@ export function RelatoriosClient({
         <TabsContent value="ia" className="mt-4">
           <AbaIA filtros={filtros} />
         </TabsContent>
-        {(["envio"] as const).map((v) => (
-          <TabsContent key={v} value={v} className="mt-4">
-            <div className="rounded-lg border border-dashed border-border bg-surface p-10 text-center text-sm text-text-muted">
-              {t("Chega na próxima etapa dos relatórios.")}
-            </div>
-          </TabsContent>
-        ))}
+        <TabsContent value="envio" className="mt-4">
+          <AbaEnvioAgendado />
+        </TabsContent>
       </Tabs>
     </div>
   );
