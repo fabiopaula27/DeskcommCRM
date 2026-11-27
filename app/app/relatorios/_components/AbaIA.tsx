@@ -22,8 +22,15 @@ export type DadosDeIA = {
   historico: { mes: string; tokens: number; custo_cents: number; chamadas: number }[];
 };
 
+// Abaixo de 1 centavo (custo por atendimento costuma ser frações), mostra 4 casas.
 const usd = (cents: number | null) =>
-  cents === null ? "—" : (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "USD" });
+  cents === null
+    ? "—"
+    : (cents / 100).toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: cents > 0 && cents < 1 ? 4 : 2,
+      });
 
 function rotuloDoMes(mes: string): string {
   const d = new Date(`${mes}-15T12:00:00Z`);
@@ -68,13 +75,13 @@ export function AbaIA({ filtros }: { filtros: FiltrosDoRelatorio }) {
         </Bloco>
       </div>
 
-      {d.tokens === 0 ? (
+      {d.chamadas === 0 ? (
         <Bloco titulo={t("Consumo por dia")}>
           <Vazio texto={t("A IA não foi usada no período.")} />
         </Bloco>
       ) : (
         <div className="grid gap-4 lg:grid-cols-3">
-          <Bloco titulo={t("Tokens por dia")} className="lg:col-span-2">
+          <Bloco titulo={t("Tokens por dia")} descricao={t("Dias contados no horário UTC, como na tela Uso de IA.")} className="lg:col-span-2">
             <GraficoPorDia serie={d.por_dia} chave="tokens" cor={CORES[1]} />
           </Bloco>
           <Bloco titulo={t("Onde a IA foi usada")}>
@@ -101,7 +108,10 @@ export function AbaIA({ filtros }: { filtros: FiltrosDoRelatorio }) {
         </div>
       )}
 
-      <Bloco titulo={t("Histórico de consumo")} descricao={t("Tokens por mês nos últimos 12 meses.")}>
+      <Bloco
+        titulo={t("Histórico de consumo")}
+        descricao={t("Tokens por mês nos últimos 12 meses. Meses antigos podem aparecer vazios se a instalação já apagou o registro de uso daquela época.")}
+      >
         {d.historico.length === 0 ? (
           <Vazio texto={t("Ainda não há consumo registrado.")} />
         ) : (

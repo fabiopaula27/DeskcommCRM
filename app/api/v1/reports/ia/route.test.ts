@@ -58,9 +58,39 @@ describe("GET /api/v1/reports/ia", () => {
       { uso: "Propostas", tokens: 200, custo_cents: 20, chamadas: 2 },
       { uso: "Atendimento da IA", tokens: 100, custo_cents: 10, chamadas: 1 },
     ]);
-    expect(d.por_dia.map((x: { dia: string }) => x.dia)).toEqual(["2026-11-01", "2026-11-02"]);
-    expect(d.historico.map((x: { mes: string }) => x.mes)).toEqual(["2026-10", "2026-11"]);
+    expect(d.por_dia.map((x: { dia: string }) => x.dia)).toEqual(["2026-11-01", "2026-11-02", "2026-11-03"]);
+    expect(d.historico.find((x: { mes: string }) => x.mes === "2026-10").tokens).toBe(70);
     expect(d.custo_por_turno_cents).toBe(10);
+  });
+
+  it("uso às 23h30 do último dia (já no dia seguinte em UTC) aparece no gráfico", async () => {
+    preparar(vi.fn(async () => ({
+      data: {
+        totais: { ...DIA("", 5, 50), turnos: 0, custo_dos_turnos_cents: 0 },
+        dias: [DIA("2026-11-03", 5, 50)],
+        purposes: [], inbounds: {}, handoffs: {},
+      },
+      error: null,
+    })));
+    const res = await GET(new NextRequest(`http://x/api/v1/reports/ia${JANELA}`));
+    const d = (await res.json()).data;
+    const soma = d.por_dia.reduce((s: number, x: { tokens: number }) => s + x.tokens, 0);
+    expect(soma).toBe(d.tokens);
+  });
+
+  it("histórico tem 12 meses, sem mês anterior à janela", async () => {
+    preparar(vi.fn(async () => ({
+      data: {
+        totais: null,
+        dias: [DIA("2020-01-01", 1, 1), DIA("2026-11-02", 1, 1)],
+        purposes: [], inbounds: {}, handoffs: {},
+      },
+      error: null,
+    })));
+    const res = await GET(new NextRequest(`http://x/api/v1/reports/ia${JANELA}`));
+    const d = (await res.json()).data;
+    expect(d.historico).toHaveLength(12);
+    expect(d.historico.some((h: { mes: string }) => h.mes === "2020-01")).toBe(false);
   });
 
   it("período sem uso não divide por zero", async () => {

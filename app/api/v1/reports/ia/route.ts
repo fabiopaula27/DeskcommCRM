@@ -30,6 +30,19 @@ type Uso = {
   purposes: (Linha & { purpose: string })[];
 };
 
+/** Os 12 meses da janela, com zero onde não houve uso; nada antes do primeiro. */
+function dozeMeses(
+  inicio: string,
+  meses: { mes: string; tokens: number; custo_cents: number; chamadas: number }[],
+) {
+  const porMes = new Map(meses.map((m) => [m.mes, m]));
+  const [ano = 1970, mes = 1] = inicio.split("-").map(Number);
+  return Array.from({ length: 12 }, (_, i) => {
+    const chave = new Date(Date.UTC(ano, mes - 1 + i, 1)).toISOString().slice(0, 7);
+    return porMes.get(chave) ?? { mes: chave, tokens: 0, custo_cents: 0, chamadas: 0 };
+  });
+}
+
 const ZERO: Linha = {
   chamadas: 0, custo_cents: 0, input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0,
 };
@@ -94,16 +107,19 @@ export async function GET(req: NextRequest): Promise<Response> {
       custo_cents: Number(totais.custo_cents),
       chamadas: totais.chamadas,
       turnos,
-      custo_por_turno_cents: turnos > 0 ? Math.round(Number(u.totais?.custo_dos_turnos_cents ?? 0) / turnos) : null,
+      custo_por_turno_cents: turnos > 0 ? Number(u.totais?.custo_dos_turnos_cents ?? 0) / turnos : null,
       por_uso: [...porUso.values()].sort((a, b) => b.tokens - a.tokens),
       por_dia: preencherDias(
         (u.dias ?? []).map((d) => ({ dia: d.dia, tokens: tokensDe(d), custo_cents: Number(d.custo_cents) })),
+        // `fn_uso_de_ia` agrupa os dias em UTC: a série é preenchida em UTC para
+        // nenhum uso do fim do dia local cair fora do gráfico.
         ctx.from,
         ctx.to,
-        ctx.tz,
+        "UTC",
         (dia) => ({ dia, tokens: 0, custo_cents: 0 }),
       ),
-      historico: somarPorMes(h.dias ?? []),
+      dias_em_utc: true,
+      historico: dozeMeses(inicioHistorico, somarPorMes(h.dias ?? [])),
     },
     { requestId },
   );
