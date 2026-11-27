@@ -23,6 +23,7 @@ export type DadosDeTemplates = {
     gasto_estimado_usd: number;
   }[];
   nomes: string[];
+  sem_categoria?: { templates: number; enviados: number };
 };
 
 const usd = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "USD" });
@@ -75,6 +76,14 @@ export function AbaTemplates({ filtros }: { filtros: FiltrosDoRelatorio }) {
       <p className="mb-5 text-xs text-text-subtle">
         {t("Estimativa para destinatários do Brasil: enviados × tarifa da categoria. A Meta cobra por mensagem entregue, então o valor real pode variar.")}
       </p>
+
+      {d.sem_categoria && d.sem_categoria.templates > 0 ? (
+        <p className="mb-5 rounded-md border border-warning/40 bg-warning-bg px-3 py-2 text-xs text-warning-fg">
+          {formatarNumero(d.sem_categoria.templates)}{" "}
+          {t("template(s) sem categoria conhecida, com")} {formatarNumero(d.sem_categoria.enviados)}{" "}
+          {t("envio(s), ficaram fora do gasto estimado. Sincronize os modelos em Conexões › API Oficial para trazer a categoria.")}
+        </p>
+      ) : null}
 
       {d.enviados === 0 ? (
         <Vazio texto={t("Nenhum template foi enviado no período.")} />

@@ -58,16 +58,20 @@ export function AbaAtendimento({
   filtros,
   moeda,
   pessoas,
+  filas = [],
 }: {
   filtros: FiltrosDoRelatorio;
   moeda: string;
   pessoas: Pessoa[];
+  filas?: { id: string; nome: string }[];
 }) {
   const t = useT();
   const [pessoa, setPessoa] = useState("");
+  const [fila, setFila] = useState("");
   const { data, isLoading, isError } = useRelatorio<DadosDeAtendimento>("atendimento", {
     ...filtros,
     user_id: pessoa || undefined,
+    setor_id: fila || undefined,
   });
 
   if (isLoading) return <Carregando />;
@@ -181,7 +185,24 @@ export function AbaAtendimento({
 
       <Bloco
         titulo={t("Distribuição de conversas")}
-        descricao={t("Quantas conversas cada pessoa recebeu da fila no período.")}
+        descricao={t("Quantas conversas cada pessoa recebeu no período. O filtro de fila usa a fila atual de cada conversa.")}
+        acao={
+          filas.length > 0 ? (
+            <select
+              aria-label={t("Filtrar por fila")}
+              value={fila}
+              onChange={(e) => setFila(e.target.value)}
+              className="h-9 rounded-md border border-border bg-surface px-2 text-sm"
+            >
+              <option value="">{t("Todas as filas")}</option>
+              {filas.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.nome}
+                </option>
+              ))}
+            </select>
+          ) : undefined
+        }
       >
         <TabelaRanking
           linhas={d.distribuicoes}

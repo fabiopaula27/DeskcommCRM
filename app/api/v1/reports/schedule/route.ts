@@ -85,6 +85,8 @@ export async function PUT(req: NextRequest): Promise<Response> {
       emails: [...new Set(v.emails.map((e) => e.toLowerCase()))],
       telefones: [...new Set(v.telefones)],
       channel_session_id: v.telefones.length > 0 ? v.channel_session_id : null,
+      // Lista editada: pendências antigas não valem mais.
+      telefones_pendentes: [],
       updated_by: authz.user.id,
       updated_at: new Date().toISOString(),
     },

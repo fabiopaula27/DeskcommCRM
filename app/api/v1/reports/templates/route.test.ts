@@ -34,7 +34,10 @@ describe("GET /api/v1/reports/templates", () => {
         enviados: 10,
         respondidos: 4,
         por_dia: [{ dia: "2026-11-02", enviados: 10, respondidos: 4 }],
-        por_template: [{ nome: "boas_vindas", categoria: "MARKETING", enviados: 10, respondidos: 4 }],
+        por_template: [
+          { nome: "boas_vindas", categoria: "MARKETING", enviados: 10, respondidos: 4 },
+          { nome: "antigo", categoria: null, enviados: 3, respondidos: 0 },
+        ],
         nomes: ["boas_vindas"],
       },
       error: null,
@@ -43,6 +46,8 @@ describe("GET /api/v1/reports/templates", () => {
     const corpo = await res.json();
     expect(corpo.data.gasto_estimado_usd).toBeCloseTo(0.625, 6);
     expect(corpo.data.por_dia).toHaveLength(2);
+    // Template sem categoria conhecida não entra no gasto, e a tela diz quantos são.
+    expect(corpo.data.sem_categoria).toEqual({ templates: 1, enviados: 3 });
   });
 
   it("sem a migration 9112 avisa", async () => {

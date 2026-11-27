@@ -74,6 +74,13 @@ describe("AbaAtendimento", () => {
     expect(nomes[0]).toBe("Lici");
   });
 
+  it("com filas cadastradas mostra o seletor de fila", () => {
+    responde(base);
+    render(<AbaAtendimento filtros={filtros} moeda="BRL" pessoas={[]} filas={[{ id: "s1", nome: "atendimento-Vendas" }]} />);
+    expect(screen.getByLabelText("Filtrar por fila")).toBeTruthy();
+    expect(useRelatorio).toHaveBeenCalled();
+  });
+
   it("sem a migration mostra o aviso", () => {
     responde({ disponivel: false, motivo: "aplique a migration" });
     render(<AbaAtendimento filtros={filtros} moeda="BRL" pessoas={[]} />);

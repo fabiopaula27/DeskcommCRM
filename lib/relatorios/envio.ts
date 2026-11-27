@@ -36,10 +36,10 @@ const dataBr = (ymd: string) => ymd.split("-").reverse().join("/");
 export async function enviarRelatorio(
   deps: DepsDoEnvio,
   args: { emails: string[]; telefones: string[]; periodo: PeriodoDoEnvio; empresa: string },
-): Promise<{ enviado: boolean; falhas: string[] }> {
+): Promise<{ enviado: boolean; falhas: string[]; telefonesComFalha: string[] }> {
   const { emails, telefones, periodo, empresa } = args;
   if (emails.length === 0 && telefones.length === 0) {
-    return { enviado: false, falhas: ["Nenhum e-mail ou telefone cadastrado."] };
+    return { enviado: false, falhas: ["Nenhum e-mail ou telefone cadastrado."], telefonesComFalha: [] };
   }
 
   const pdf = await deps.gerarPdf(periodo);
@@ -48,6 +48,7 @@ export async function enviarRelatorio(
   const legenda = `Relatório de ${empresa} · ${quando}`;
 
   const falhas: string[] = [];
+  const telefonesComFalha: string[] = [];
   let algumOk = false;
 
   // Um e-mail por destinatário: ninguém vê o endereço dos outros.
@@ -72,6 +73,7 @@ export async function enviarRelatorio(
       url = await deps.publicarPdf(pdf, arquivo);
     } catch (e) {
       falhas.push(`WhatsApp: não consegui preparar o arquivo (${e instanceof Error ? e.message : String(e)})`);
+      telefonesComFalha.push(...telefones);
     }
     if (url) {
       for (const tel of telefones) {
@@ -80,10 +82,11 @@ export async function enviarRelatorio(
           algumOk = true;
         } catch (e) {
           falhas.push(`WhatsApp ${tel}: ${e instanceof Error ? e.message : String(e)}`);
+          telefonesComFalha.push(tel);
         }
       }
     }
   }
 
-  return { enviado: algumOk, falhas };
+  return { enviado: algumOk, falhas, telefonesComFalha };
 }

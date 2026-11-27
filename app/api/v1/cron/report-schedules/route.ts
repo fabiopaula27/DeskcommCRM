@@ -10,6 +10,7 @@ import { autorizaCron } from "@/lib/auth/cron-auth";
 import { logger } from "@/lib/logger";
 import { idsDeOrgsParadas } from "@/lib/organizacao/operante";
 import { enviarRelatorio } from "@/lib/relatorios/envio";
+import { limparPdfsAntigos } from "@/lib/relatorios/limpeza";
 import { dadosDaEmpresa, depsReais } from "@/lib/relatorios/envio-real";
 import { rodarEnviosAgendados, type LinhaDoAgendamento } from "@/lib/relatorios/rodada";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -27,7 +28,7 @@ async function handle(req: NextRequest): Promise<Response> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("report_schedules")
-    .select("organization_id, ativo, frequencia, horario, emails, telefones, channel_session_id, ultimo_periodo, tentativas_do_periodo")
+    .select("organization_id, ativo, frequencia, horario, emails, telefones, channel_session_id, ultimo_periodo, tentativas_do_periodo, telefones_pendentes")
     .eq("ativo", true)
     .order("updated_at", { ascending: true })
     .limit(TETO);
@@ -62,6 +63,18 @@ async function handle(req: NextRequest): Promise<Response> {
       }
       return reservado === true;
     },
+    async reservarReenvio(orgId, chave) {
+      const { data: lista, error: erro } = await admin.rpc("fn_reservar_reenvio_de_relatorio" as never, {
+        p_org: orgId,
+        p_chave: chave,
+      } as never);
+      if (erro) {
+        logger.error("[report-schedules] reserva de reenvio falhou", { organization_id: orgId, error: erro.message, requestId });
+        return null;
+      }
+      const linhas = lista as unknown;
+      return Array.isArray(linhas) && linhas.length > 0 && linhas.every((x) => typeof x === "string") ? (linhas as string[]) : null;
+    },
     async enviar(linha, periodo, tz) {
       const e = await empresa(linha.organization_id);
       const deps = depsReais(admin, {
@@ -82,6 +95,17 @@ async function handle(req: NextRequest): Promise<Response> {
       if (erro) logger.error("[report-schedules] desfecho não gravado", { organization_id: orgId, error: erro.message, requestId });
     },
   });
+
+  // Limpeza DEPOIS dos envios: o tempo dela não come o prazo da rodada.
+  // Falha aqui nunca derruba nada — vira log.
+  try {
+    const apagados = await limparPdfsAntigos(admin.storage.from("relatorios") as never, new Date());
+    const { error: erroMarcas } = await admin.from("report_send_marks").delete().lt("expires_at", new Date().toISOString());
+    if (erroMarcas) logger.warn("[report-schedules] marcas vencidas não apagadas", { error: erroMarcas.message, requestId });
+    if (apagados > 0) logger.info("[report-schedules] PDFs antigos apagados", { apagados, requestId });
+  } catch (e) {
+    logger.warn("[report-schedules] limpeza falhou", { error: e instanceof Error ? e.message : String(e), requestId });
+  }
 
   return ok(resultado, { requestId });
 }

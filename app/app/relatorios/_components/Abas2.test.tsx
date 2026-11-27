@@ -79,6 +79,15 @@ describe("AbaTemplates", () => {
     expect(screen.getAllByText(/US\$\s?0,63/).length).toBeGreaterThan(0);
   });
 
+  it("avisa quando há template sem categoria fora do gasto", () => {
+    responde({
+      disponivel: true, enviados: 13, respondidos: 4, gasto_estimado_usd: 0.625, por_dia: [],
+      por_template: [], nomes: [], sem_categoria: { templates: 1, enviados: 3 },
+    });
+    render(<AbaTemplates filtros={filtros} />);
+    expect(screen.getByText(/sem categoria conhecida/)).toBeTruthy();
+  });
+
   it("período sem envios mostra mensagem", () => {
     responde({ disponivel: true, enviados: 0, respondidos: 0, gasto_estimado_usd: 0, por_dia: [], por_template: [], nomes: [] });
     render(<AbaTemplates filtros={filtros} />);
