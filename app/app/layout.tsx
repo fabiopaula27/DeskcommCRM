@@ -1,4 +1,6 @@
 import { InterfaceRefresh } from "@/hooks/auth/InterfaceRefresh";
+import { AgendaGoogleCaidaBanner } from "@/components/app/AgendaGoogleCaidaBanner";
+import { agendaGoogleCaida, type AgendaCaida } from "@/lib/agenda/google/conexao-caida";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import {
@@ -78,6 +80,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // EPIC-02: gate /app/* on completed onboarding.
   // EPIC-11: gate /app/* on org not being suspended (S-11.08).
   let conexoesCaidas: ConexaoCaida[] = [];
+  let agendaCaida: AgendaCaida | null = null;
   let faixa: Faixa = null;
   let orgFuso: string | null = null;
   let enrolled = false;
@@ -139,7 +142,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
      *    aplica. Vigiado por
      *    `tests/unit/faixa-respeita-os-canais-do-atendente.test.tsx`.
      */
-    const [orgRes, conexoes, isEnrolled, mfaRequired, modulos, telefonia] = await Promise.all([
+    const [orgRes, conexoes, isEnrolled, mfaRequired, modulos, telefonia, agendaDoUsuario] = await Promise.all([
       admin
         .from("organizations")
         .select("onboarded_at, status, settings, timezone")
@@ -159,6 +162,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       // leia — o que se mede é o tronco SIP que esta empresa salvou. Entra no
       // mesmo `Promise.all`, então custa a consulta mais lenta, não uma espera.
       telefoniaEmUso(admin, activeOrg.orgId),
+      // A agenda do Google de QUEM ESTÁ USANDO caiu? Nunca lança (null na falha).
+      agendaGoogleCaida(admin, activeOrg.orgId, user.id),
     ]);
 
     const orgRow = orgRes.data;
@@ -168,6 +173,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       throw new Error(`organizacao_ilegivel: ${orgRes.error.message}`);
     }
     conexoesCaidas = conexoes;
+    agendaCaida = agendaDoUsuario;
     enrolled = isEnrolled;
     needsMfaGate = mfaRequired;
 
@@ -349,6 +355,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <FaixasDeCima>
           <ImpersonateBanner impersonating={impersonating} />
           <ConexaoCaidaBanner caidas={conexoesCaidas} />
+          <AgendaGoogleCaidaBanner caida={agendaCaida} />
           {faixa !== null && <FaixaDaCobranca faixa={faixa} fuso={orgFuso} />}
         </FaixasDeCima>
         {needsMfaGate ? (
