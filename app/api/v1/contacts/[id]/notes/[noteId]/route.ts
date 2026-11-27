@@ -10,7 +10,8 @@ import type { NextRequest } from "next/server";
 import { ok, fail } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { requireSupportWrite } from "@/lib/impersonate/support";
-import { BUCKET_DAS_ANOTACOES, COLUNAS_DA_ANOTACAO, edicaoSchema, podeMexer, type LinhaDaAnotacao } from "@/lib/contatos/anotacoes";
+import { BUCKET_DAS_ANOTACOES, audioDoContato, COLUNAS_DA_ANOTACAO, edicaoSchema, podeMexer, type LinhaDaAnotacao } from "@/lib/contatos/anotacoes";
+import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import { contextoDasAnotacoes, lerAnotacao, montarAnotacoes, type Ctx } from "../_comum";
@@ -67,7 +68,10 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   }
   const { error } = await c.supabase.from("contact_notes").delete().eq("id", linha.id).eq("organization_id", c.orgId);
   if (error) return fail("internal_error", "Não consegui apagar a anotação.", 500, { requestId });
-  if (linha.audio_path) await createAdminClient().storage.from(BUCKET_DAS_ANOTACOES).remove([linha.audio_path]);
+  if (audioDoContato(linha.audio_path, c.orgId, c.contatoId)) {
+    const { error: removeu } = await createAdminClient().storage.from(BUCKET_DAS_ANOTACOES).remove([linha.audio_path as string]);
+    if (removeu) logger.warn("[anotacoes] áudio não removido do bucket", { organization_id: c.orgId, note_id: linha.id, error: removeu.message });
+  }
   await audit({
     action: "contact_note.deleted",
     actorUserId: c.userId,

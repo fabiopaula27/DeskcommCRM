@@ -10,6 +10,7 @@ import { roleAtLeast, type Role } from "@/lib/auth/types";
 import {
   BUCKET_DAS_ANOTACOES,
   COLUNAS_DA_ANOTACAO,
+  audioDoContato,
   desfechoDaTranscricao,
   paraAnotacao,
   type Anotacao,
@@ -86,10 +87,12 @@ export async function transcrever(
 /** Linhas → anotações prontas para a tela (URL assinada de 1h, nome do autor). */
 export async function montarAnotacoes(
   linhas: LinhaDaAnotacao[],
-  c: { userId: string; ehGerente: boolean },
+  c: { userId: string; ehGerente: boolean; orgId: string; contatoId: string },
 ): Promise<Anotacao[]> {
   const admin = createAdminClient();
-  const caminhos = linhas.map((l) => l.audio_path).filter((p): p is string => Boolean(p));
+  const caminhos = linhas
+    .map((l) => l.audio_path)
+    .filter((p): p is string => audioDoContato(p, c.orgId, c.contatoId));
   const urls = new Map<string, string>();
   if (caminhos.length > 0) {
     const { data } = await admin.storage.from(BUCKET_DAS_ANOTACOES).createSignedUrls(caminhos, 3600);

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { Anotacao } from "@/lib/contatos/anotacoes";
@@ -80,5 +80,31 @@ describe("aba Anotações", () => {
     expect(screen.queryByRole("button", { name: /Gravar áudio/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /Nova tarefa/ })).toBeNull();
     expect(screen.getByRole("button", { name: "Gerar resumo" })).toBeTruthy();
+  });
+
+  it("sair da aba no meio da gravação desliga o microfone e não envia nada", async () => {
+    anotacoes = [];
+    const pararFaixa = vi.fn();
+    class FakeRecorder {
+      static isTypeSupported = () => true;
+      state = "inactive";
+      ondataavailable: ((e: { data: Blob }) => void) | null = null;
+      onstop: (() => void) | null = null;
+      start() { this.state = "recording"; }
+      stop() { this.state = "inactive"; this.onstop?.(); }
+    }
+    vi.stubGlobal("MediaRecorder", FakeRecorder);
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: { getUserMedia: async () => ({ getTracks: () => [{ stop: pararFaixa }] }) },
+    });
+    const { unmount } = abrir();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Gravar áudio/ }));
+    });
+    expect(screen.getByRole("status").textContent).toMatch(/Gravando/);
+    unmount();
+    expect(pararFaixa).toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 });

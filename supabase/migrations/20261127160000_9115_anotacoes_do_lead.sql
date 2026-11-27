@@ -25,7 +25,13 @@ create table if not exists public.contact_notes (
   constraint contact_notes_status_check check (transcription_status in ('none','pending','ready','failed','unavailable')),
   constraint contact_notes_texto_nao_vazio check (kind <> 'text' or length(btrim(coalesce(body,''))) > 0),
   constraint contact_notes_audio_tem_arquivo check (kind <> 'audio' or audio_path is not null),
-  constraint contact_notes_body_tamanho check (body is null or length(body) <= 20000)
+  constraint contact_notes_body_tamanho check (body is null or length(body) <= 20000),
+  -- O servidor lê/assina/apaga o áudio com service role: o caminho TEM de
+  -- morar na pasta do próprio contato, senão vira acesso a arquivo alheio.
+  constraint contact_notes_audio_na_pasta_do_contato check (
+    audio_path is null
+    or (audio_path like organization_id::text || '/' || contact_id::text || '/%' and position('..' in audio_path) = 0)
+  )
 );
 
 create index if not exists idx_contact_notes_contato
@@ -45,6 +51,7 @@ create policy contact_notes_insert on public.contact_notes
     (organization_id in (select public.fn_user_org_ids()))
     and public.fn_role_at_least(organization_id, 'agent')
     and created_by = auth.uid()
+    and exists (select 1 from public.contacts c where c.id = contact_id and c.organization_id = contact_notes.organization_id)
   );
 
 drop policy if exists contact_notes_update on public.contact_notes;
@@ -53,7 +60,38 @@ create policy contact_notes_update on public.contact_notes
     (organization_id in (select public.fn_user_org_ids()))
     and public.fn_role_at_least(organization_id, 'agent')
     and (created_by = auth.uid() or public.fn_role_at_least(organization_id, 'manager'))
+  )
+  with check (
+    (organization_id in (select public.fn_user_org_ids()))
+    and public.fn_role_at_least(organization_id, 'agent')
   );
+
+-- Na edição só mudam o texto e o estado da transcrição: dono, contato, autor,
+-- arquivo e origem ficam como nasceram (a policy não enxerga OLD).
+create or replace function public.fn_contact_notes_campos_fixos()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  if new.organization_id is distinct from old.organization_id
+     or new.contact_id is distinct from old.contact_id
+     or new.created_by is distinct from old.created_by
+     or new.kind is distinct from old.kind
+     or new.audio_path is distinct from old.audio_path
+     or new.audio_mime is distinct from old.audio_mime
+     or new.source_message_id is distinct from old.source_message_id
+     or new.created_at is distinct from old.created_at then
+    raise exception 'contact_notes: só o texto e a transcrição podem mudar' using errcode = '42501';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_contact_notes_campos_fixos on public.contact_notes;
+create trigger trg_contact_notes_campos_fixos
+  before update on public.contact_notes
+  for each row execute function public.fn_contact_notes_campos_fixos();
 
 drop policy if exists contact_notes_delete on public.contact_notes;
 create policy contact_notes_delete on public.contact_notes

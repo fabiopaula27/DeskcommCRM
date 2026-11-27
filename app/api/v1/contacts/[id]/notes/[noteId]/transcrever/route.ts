@@ -8,7 +8,7 @@ import type { NextRequest } from "next/server";
 
 import { ok, fail } from "@/lib/api/wrappers";
 import { requireSupportWrite } from "@/lib/impersonate/support";
-import { BUCKET_DAS_ANOTACOES, COLUNAS_DA_ANOTACAO, podeMexer, type LinhaDaAnotacao } from "@/lib/contatos/anotacoes";
+import { BUCKET_DAS_ANOTACOES, audioDoContato, COLUNAS_DA_ANOTACAO, podeMexer, type LinhaDaAnotacao } from "@/lib/contatos/anotacoes";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import { contextoDasAnotacoes, lerAnotacao, montarAnotacoes, transcrever, type Ctx } from "../../_comum";
@@ -24,7 +24,7 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
   if (!c.ok) return c.response;
   const { noteId } = await ctx.params;
   const linha = await lerAnotacao(c.supabase, c, noteId ?? "");
-  if (!linha || linha.kind !== "audio" || !linha.audio_path) {
+  if (!linha || linha.kind !== "audio" || !linha.audio_path || !audioDoContato(linha.audio_path, c.orgId, c.contatoId)) {
     return fail("not_found", "Anotação de áudio não encontrada.", 404, { requestId });
   }
   if (!podeMexer(linha, c.userId, c.ehGerente)) {
@@ -34,8 +34,20 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
     const [anotacao] = await montarAnotacoes([linha], c);
     return ok({ anotacao }, { requestId });
   }
+  const { data: reservou } = await c.supabase
+    .from("contact_notes")
+    .update({ transcription_status: "pending" })
+    .eq("id", linha.id)
+    .eq("organization_id", c.orgId)
+    .neq("transcription_status", "pending")
+    .select("id")
+    .maybeSingle();
+  if (!reservou) return fail("conflict", "Esta transcrição já está em andamento.", 409, { requestId });
   const baixou = await createAdminClient().storage.from(BUCKET_DAS_ANOTACOES).download(linha.audio_path);
-  if (baixou.error || !baixou.data) return fail("gone", "O arquivo deste áudio não está mais disponível.", 410, { requestId });
+  if (baixou.error || !baixou.data) {
+    await c.supabase.from("contact_notes").update({ transcription_status: "failed" }).eq("id", linha.id).eq("organization_id", c.orgId);
+    return fail("gone", "O arquivo deste áudio não está mais disponível.", 410, { requestId });
+  }
   const desfecho = await transcrever(c.orgId, Buffer.from(await baixou.data.arrayBuffer()), linha.audio_mime ?? "audio/webm");
 
   const { data, error } = await c.supabase

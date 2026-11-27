@@ -16,6 +16,7 @@ import { audit } from "@/lib/audit";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import {
   BUCKET_DAS_ANOTACOES,
+  LIMITE_DO_AUDIO_BYTES,
   COLUNAS_DA_ANOTACAO,
   audioDaConversaSchema,
   caminhoDoAudio,
@@ -59,7 +60,13 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   if (!c.ok) return c.response;
 
   const tipo = req.headers.get("content-type") ?? "";
-  if (tipo.includes("multipart/form-data")) return audioGravado(req, c, requestId);
+  if (tipo.includes("multipart/form-data")) {
+    const tamanho = Number(req.headers.get("content-length") ?? 0);
+    if (tamanho > LIMITE_DO_AUDIO_BYTES + 64 * 1024) {
+      return fail("validation_failed", "Áudio grande demais (máx. 25 MB).", 413, { requestId });
+    }
+    return audioGravado(req, c, requestId);
+  }
 
   const corpo = (await req.json().catch(() => null)) as unknown;
   const texto = textoSchema.safeParse(corpo);
@@ -106,6 +113,49 @@ async function gravar(c: ContextoDasAnotacoes, requestId: string, nova: NovaLinh
   return ok({ anotacao }, { requestId, status: 201 });
 }
 
+/**
+ * Áudio já no bucket: grava a anotação como `pending` ANTES de transcrever —
+ * se a função estourar o tempo, a nota existe (com o arquivo achável pela
+ * LGPD) e o "tentar de novo" resolve. Sem linha gravada, o arquivo sai.
+ */
+async function gravarAudioETranscrever(
+  c: ContextoDasAnotacoes,
+  requestId: string,
+  nova: NovaLinha & { audio_path: string; audio_mime: string },
+  desfecho: () => Promise<{ transcription_status: LinhaDaAnotacao["transcription_status"]; body: string | null }>,
+) {
+  const { data, error } = await c.supabase
+    .from("contact_notes")
+    .insert({ ...nova, organization_id: c.orgId, contact_id: c.contatoId, created_by: c.userId })
+    .select("id")
+    .single();
+  if (error || !data) {
+    await createAdminClient().storage.from(BUCKET_DAS_ANOTACOES).remove([nova.audio_path]);
+    if (tabelaAusente(error)) return fail("not_available", SEM_TABELA.motivo, 409, { requestId });
+    return fail("internal_error", "Não consegui salvar a anotação.", 500, { requestId });
+  }
+  await audit({
+    action: "contact_note.created",
+    actorUserId: c.userId,
+    organizationId: c.orgId,
+    resourceType: "contact_notes",
+    resourceId: (data as { id: string }).id,
+    requestId,
+    metadata: { kind: "audio", da_conversa: Boolean(nova.source_message_id) },
+  });
+  const r = await desfecho();
+  const { data: final } = await c.supabase
+    .from("contact_notes")
+    .update(r)
+    .eq("id", (data as { id: string }).id)
+    .eq("organization_id", c.orgId)
+    .select(COLUNAS_DA_ANOTACAO)
+    .single();
+  if (!final) return fail("internal_error", "A anotação foi salva, mas não consegui gravar a transcrição.", 500, { requestId });
+  const [anotacao] = await montarAnotacoes([final as LinhaDaAnotacao], c);
+  return ok({ anotacao }, { requestId, status: 201 });
+}
+
 async function audioGravado(req: NextRequest, c: ContextoDasAnotacoes, requestId: string) {
   const form = await req.formData().catch(() => null);
   const arquivo = form?.get("audio");
@@ -125,8 +175,12 @@ async function audioGravado(req: NextRequest, c: ContextoDasAnotacoes, requestId
   const subiu = await createAdminClient().storage.from(BUCKET_DAS_ANOTACOES).upload(caminho, buffer, { contentType: mime });
   if (subiu.error) return fail("internal_error", "Não consegui guardar o áudio.", 500, { requestId });
 
-  const desfecho = await transcrever(c.orgId, buffer, mime);
-  return gravar(c, requestId, { id, kind: "audio", audio_path: caminho, audio_mime: mime, audio_duration_s: duracao, ...desfecho });
+  return gravarAudioETranscrever(
+    c,
+    requestId,
+    { id, kind: "audio", body: null, transcription_status: "pending", audio_path: caminho, audio_mime: mime, audio_duration_s: duracao },
+    () => transcrever(c.orgId, buffer, mime),
+  );
 }
 
 async function audioDaConversa(c: ContextoDasAnotacoes, requestId: string, messageId: string) {
@@ -137,6 +191,7 @@ async function audioDaConversa(c: ContextoDasAnotacoes, requestId: string, messa
     .eq("id", messageId)
     .eq("organization_id", c.orgId)
     .eq("contact_id", c.contatoId)
+    .eq("direction", "inbound")
     .maybeSingle();
   const msg = m as {
     id: string;
@@ -160,15 +215,10 @@ async function audioDaConversa(c: ContextoDasAnotacoes, requestId: string, messa
 
   const jaTranscrito = (msg.media_derived_text ?? "").trim();
   const pronto = msg.media_derived_status === "ready" && jaTranscrito !== "" && jaTranscrito !== MARCADOR_NAO_LIDA;
-  const desfecho = pronto
-    ? { transcription_status: "ready" as const, body: jaTranscrito }
-    : await transcrever(c.orgId, buffer, mime);
-  return gravar(c, requestId, {
-    id,
-    kind: "audio",
-    audio_path: caminho,
-    audio_mime: mime,
-    source_message_id: msg.id,
-    ...desfecho,
-  });
+  return gravarAudioETranscrever(
+    c,
+    requestId,
+    { id, kind: "audio", body: null, transcription_status: "pending", audio_path: caminho, audio_mime: mime, source_message_id: msg.id },
+    async () => (pronto ? { transcription_status: "ready" as const, body: jaTranscrito } : transcrever(c.orgId, buffer, mime)),
+  );
 }

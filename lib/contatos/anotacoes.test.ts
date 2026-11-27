@@ -78,3 +78,15 @@ describe("anotações — regras", () => {
     expect(tabelaAusente({ code: "23505" })).toBe(false);
   });
 });
+
+import { audioDoContato } from "./anotacoes";
+
+describe("audioDoContato", () => {
+  it("só aceita caminho dentro da pasta do próprio contato", () => {
+    expect(audioDoContato("o/c/n.webm", "o", "c")).toBe(true);
+    expect(audioDoContato("outra/c/n.webm", "o", "c")).toBe(false);
+    expect(audioDoContato("o/outro/n.webm", "o", "c")).toBe(false);
+    expect(audioDoContato("o/c/../x/n.webm", "o", "c")).toBe(false);
+    expect(audioDoContato(null, "o", "c")).toBe(false);
+  });
+});

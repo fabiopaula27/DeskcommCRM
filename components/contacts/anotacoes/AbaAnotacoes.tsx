@@ -6,7 +6,7 @@
  * tempo com data e hora de cada registro.
  */
 import { format } from "date-fns";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { FormularioDeTarefa } from "@/app/app/tasks/_components/FormularioDeTarefa";
 import { Badge } from "@/components/ui/badge";
@@ -181,6 +181,18 @@ function Gravador({ aoGravar, desativado }: { aoGravar: (b: Blob, duracao: numbe
   const [erro, setErro] = useState<string | null>(null);
   const rec = useRef<{ r: MediaRecorder; partes: Blob[]; inicio: number; timer: number; descartar: boolean } | null>(null);
 
+  // Saiu da aba gravando: desliga o microfone e descarta — nada é enviado.
+  useEffect(
+    () => () => {
+      const atual = rec.current;
+      if (atual && atual.r.state !== "inactive") {
+        atual.descartar = true;
+        atual.r.stop();
+      }
+    },
+    [],
+  );
+
   async function comecar() {
     setErro(null);
     const mime =
@@ -189,13 +201,15 @@ function Gravador({ aoGravar, desativado }: { aoGravar: (b: Blob, duracao: numbe
       setErro(t("Este navegador não grava áudio. Envie um arquivo de áudio."));
       return;
     }
+    let stream: MediaStream | null = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const r = new MediaRecorder(stream, { mimeType: mime });
+      const ativo = stream;
       const estado = { r, partes: [] as Blob[], inicio: Date.now(), timer: 0, descartar: false };
       r.ondataavailable = (e) => e.data.size > 0 && estado.partes.push(e.data);
       r.onstop = () => {
-        stream.getTracks().forEach((tr) => tr.stop());
+        ativo.getTracks().forEach((tr) => tr.stop());
         window.clearInterval(estado.timer);
         setGravando(false);
         if (!estado.descartar && estado.partes.length) {
@@ -212,6 +226,7 @@ function Gravador({ aoGravar, desativado }: { aoGravar: (b: Blob, duracao: numbe
       setGravando(true);
       r.start();
     } catch {
+      stream?.getTracks().forEach((tr) => tr.stop());
       setErro(t("Não consegui usar o microfone. Libere o acesso no navegador."));
     }
   }

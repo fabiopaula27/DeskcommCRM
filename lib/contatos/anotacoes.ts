@@ -125,3 +125,13 @@ export function tabelaAusente(error: unknown): boolean {
   const code = (error as { code?: string } | null)?.code;
   return code === "42P01" || code === "PGRST205";
 }
+
+/**
+ * O áudio mora na pasta do PRÓPRIO contato? O servidor lê, assina e apaga com
+ * o admin: um `audio_path` gravado à mão apontando para outra pasta não pode
+ * virar acesso ao arquivo alheio (a migration repete a regra num CHECK).
+ */
+export function audioDoContato(caminho: string | null, orgId: string, contatoId: string): boolean {
+  if (!caminho || caminho.includes("..")) return false;
+  return caminho.startsWith(`${orgId}/${contatoId}/`);
+}

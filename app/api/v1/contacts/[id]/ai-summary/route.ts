@@ -62,7 +62,10 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
       origem: (k.source as string | null) ?? null,
       criadoEm: (k.created_at as string) ?? new Date().toISOString(),
       tags: Array.isArray(k.tags) ? (k.tags as string[]) : [],
-      campos: (k.custom_fields as Record<string, unknown> | null) ?? {},
+      // Sem resumos antigos salvos na ficha: a IA reciclaria o próprio texto.
+      campos: Object.fromEntries(
+        Object.entries((k.custom_fields as Record<string, unknown> | null) ?? {}).filter(([chave]) => !/resumo/i.test(chave)),
+      ),
     },
     anotacoes: linhasDeNotas.map((n) => ({
       criadaEm: n.created_at as string,
