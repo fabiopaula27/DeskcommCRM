@@ -1463,6 +1463,10 @@ export const AUDIT_ACTIONS = [
   "contact_note.updated",
   "contact_note.deleted",
   "contact.ai_summary",
+  // Messenger e Instagram Direct pela conexão direta (migration 9116).
+  "channel.meta_social.connect_started",
+  "channel.meta_social.connected",
+  "channel.meta_social.disconnected",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

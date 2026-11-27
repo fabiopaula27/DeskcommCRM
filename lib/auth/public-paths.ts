@@ -85,6 +85,10 @@ export const PUBLIC_PATHS: RegExp[] = [
   // Ancorados com `$` de propósito — `/^\/api\/v1\/agenda\/google\// deixaria
   // qualquer sub-path futuro nascer público de carona.
   /^\/api\/v1\/agenda\/google\/callback$/,
+  // Volta do login da Meta (Messenger/Instagram): mesma razão da agenda — a
+  // sessão Strict não viaja numa navegação vinda de facebook.com; quem prova a
+  // pessoa é o `state` assinado + o cookie de vínculo Lax.
+  /^\/api\/v1\/channels\/meta-social\/callback$/,
   // OAuth POR CONTATO de servidor MCP externo (migration 9095). Quem chega é o
   // navegador do CLIENTE FINAL — nunca teve sessão nossa. A autoridade é o
   // `state` de `mcp_oauth_pedidos` (256 bits, uso único, 10 min, amarrado a

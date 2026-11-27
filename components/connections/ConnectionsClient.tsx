@@ -22,6 +22,7 @@ import {
   CHANNEL_PROVIDER_SOCIAL,
   DEFAULT_CHANNEL_PROVIDER,
   ehProviderEvolution,
+  ehProviderMetaSocial,
   capabilitiesOf,
 } from "@/lib/channels/capabilities";
 import type { ChannelProvider } from "@/lib/channels/capabilities";
@@ -232,7 +233,10 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
   // Os canais por QR do servidor próprio têm cartão e rotas à parte
   // (`CanalEvolutionClient`): aqui o Reconectar bateria na rota do WAHA.
   const list = (sessions ?? []).filter(
-    (session) => session.provider !== CHANNEL_PROVIDER_SOCIAL && !ehProviderEvolution(session.provider),
+    (session) =>
+      session.provider !== CHANNEL_PROVIDER_SOCIAL &&
+      !ehProviderEvolution(session.provider) &&
+      !ehProviderMetaSocial(session.provider),
   );
   /** Alvo de cada botão de lote — os dois só existem quando têm o que fazer. */
   const paraPausar = list.filter((c) => !canalDesativado(c.metadata));
