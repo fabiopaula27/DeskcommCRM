@@ -13,6 +13,7 @@ const linha = (over: Partial<LinhaDoAgendamento> = {}): LinhaDoAgendamento => ({
   channel_session_id: null,
   ultimo_periodo: null,
   tentativas_do_periodo: 0,
+  telefones_pendentes: [],
   ...over,
 });
 
@@ -27,6 +28,7 @@ describe("rodada do envio agendado", () => {
       enviar,
       gravar,
       reservar: async () => true,
+      reservarReenvio: async () => null,
       agora: new Date("2026-11-27T11:05:00Z"),
     });
     expect(r).toEqual({ enviados: 1, falhas: 0, pulados: 0 });
@@ -42,6 +44,7 @@ describe("rodada do envio agendado", () => {
       enviar: async () => ({ enviado: false, falhas: ["E-mail: not_configured"] }),
       gravar,
       reservar: async () => true,
+      reservarReenvio: async () => null,
       agora: new Date("2026-11-27T11:05:00Z"),
     });
     expect(gravar).toHaveBeenCalledWith(ORG, expect.objectContaining({
@@ -62,6 +65,7 @@ describe("rodada do envio agendado", () => {
       enviar,
       gravar: async () => undefined,
       reservar: async () => true,
+      reservarReenvio: async () => null,
       agora: new Date("2026-11-27T11:05:00Z"),
     });
     expect(r).toEqual({ enviados: 1, falhas: 1, pulados: 1 });
@@ -76,6 +80,7 @@ describe("rodada do envio agendado", () => {
       enviar,
       gravar: async () => undefined,
       reservar: async () => false,
+      reservarReenvio: async () => null,
       agora: new Date("2026-11-27T11:05:00Z"),
     });
     expect(enviar).not.toHaveBeenCalled();
@@ -96,11 +101,61 @@ describe("rodada do envio agendado", () => {
       enviar,
       gravar: async () => undefined,
       reservar: async () => true,
+      reservarReenvio: async () => null,
       agora: new Date("2026-11-27T11:05:00Z"),
       prazoMs: 150_000,
       decorrido: () => relogio,
     });
     expect(enviar).toHaveBeenCalledTimes(1);
     expect(r.enviados).toBe(1);
+  });
+
+  it("envio parcial guarda o telefone que falhou", async () => {
+    const gravar = vi.fn(async () => undefined);
+    await rodarEnviosAgendados({
+      agendamentos: [linha({ telefones: ["+5511", "+5522"] })],
+      paradas: new Set(),
+      fusoDe: async () => "America/Sao_Paulo",
+      enviar: async () => ({ enviado: true, falhas: ["WhatsApp +5522: x"], telefonesComFalha: ["+5522"] }),
+      gravar,
+      reservar: async () => true,
+      reservarReenvio: async () => null,
+      agora: new Date("2026-11-27T11:05:00Z"),
+    });
+    expect(gravar).toHaveBeenCalledWith(ORG, expect.objectContaining({ ultimo_periodo: "diario:2026-11-26", telefones_pendentes: ["+5522"] }));
+  });
+
+  it("período já enviado com telefone pendente tenta de novo só para ele", async () => {
+    const gravar = vi.fn(async () => undefined);
+    const enviar = vi.fn(async () => ({ enviado: true, falhas: [], telefonesComFalha: [] }));
+    const r = await rodarEnviosAgendados({
+      agendamentos: [linha({ ultimo_periodo: "diario:2026-11-26", telefones: ["+5511", "+5522"], telefones_pendentes: ["+5522"] })],
+      paradas: new Set(),
+      fusoDe: async () => "America/Sao_Paulo",
+      enviar,
+      gravar,
+      reservar: async () => true,
+      reservarReenvio: async () => ["+5522"],
+      agora: new Date("2026-11-27T11:20:00Z"),
+    });
+    expect(enviar).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(enviar).mock.calls[0]![0]).toMatchObject({ emails: [], telefones: ["+5522"] });
+    expect(gravar).toHaveBeenCalledWith(ORG, expect.objectContaining({ telefones_pendentes: [], ultimo_erro: null }));
+    expect(r.enviados).toBe(1);
+  });
+
+  it("sem reserva de reenvio (tentativas esgotadas) não manda nada", async () => {
+    const enviar = vi.fn();
+    await rodarEnviosAgendados({
+      agendamentos: [linha({ ultimo_periodo: "diario:2026-11-26", telefones_pendentes: ["+5522"], tentativas_do_periodo: 2 })],
+      paradas: new Set(),
+      fusoDe: async () => "America/Sao_Paulo",
+      enviar,
+      gravar: async () => undefined,
+      reservar: async () => true,
+      reservarReenvio: async () => null,
+      agora: new Date("2026-11-27T11:20:00Z"),
+    });
+    expect(enviar).not.toHaveBeenCalled();
   });
 });

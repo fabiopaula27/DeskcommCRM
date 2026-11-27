@@ -77,4 +77,21 @@ describe("GET /api/v1/reports/atendimento", () => {
     expect(corpo.data.cartoes.conversas.variacao).toEqual({ tipo: "pct", pct: -61.1 });
     expect(corpo.data.humanas_por_hora).toHaveLength(24);
   });
+
+  it("com fila escolhida, a distribuição vem da função por fila", async () => {
+    autorizar();
+    const rpc = vi.fn(async (nome: string) =>
+      nome === "fn_relatorio_distribuicoes"
+        ? { data: [{ user_id: "u9", total: 31 }], error: null }
+        : { data: PAYLOAD, error: null },
+    );
+    const org = { data: { timezone: "America/Sao_Paulo" }, error: null };
+    const builder = { select: () => builder, eq: () => builder, maybeSingle: async () => org };
+    vi.mocked(createClient).mockResolvedValue({ from: () => builder, rpc } as never);
+    const setor = "44444444-4444-4444-8444-444444444444";
+    const res = await GET(new NextRequest(`${URL_BASE}?setor_id=${setor}`));
+    const corpo = await res.json();
+    expect(rpc).toHaveBeenCalledWith("fn_relatorio_distribuicoes", expect.objectContaining({ p_setor: setor }));
+    expect(corpo.data.distribuicoes[0].total).toBe(31);
+  });
 });

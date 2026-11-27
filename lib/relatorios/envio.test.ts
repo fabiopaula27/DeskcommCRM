@@ -18,7 +18,7 @@ describe("enviar relatório agendado", () => {
   it("manda um e-mail com o PDF anexado e um documento por telefone", async () => {
     const d = deps();
     const r = await enviarRelatorio(d, { emails: ["a@x.com", "b@x.com"], telefones: ["+5516999990000"], periodo, empresa: "Loja" });
-    expect(r).toEqual({ enviado: true, falhas: [] });
+    expect(r).toEqual({ enviado: true, falhas: [], telefonesComFalha: [] });
     // Um e-mail por destinatário: ninguém vê o endereço dos outros.
     expect(d.enviarEmail).toHaveBeenCalledTimes(2);
     const email = vi.mocked(d.enviarEmail).mock.calls[0]![0];
@@ -32,18 +32,19 @@ describe("enviar relatório agendado", () => {
     const r = await enviarRelatorio(d, { emails: ["a@x.com"], telefones: ["+5516999990000"], periodo, empresa: "Loja" });
     expect(r.enviado).toBe(true);
     expect(r.falhas).toEqual(["WhatsApp +5516999990000: canal desconectado"]);
+    expect(r.telefonesComFalha).toEqual(["+5516999990000"]);
   });
 
   it("e-mail recusado pelo provedor conta como falha", async () => {
     const d = deps({ enviarEmail: vi.fn(async () => ({ ok: false, error: "not_configured" })) });
     const r = await enviarRelatorio(d, { emails: ["a@x.com"], telefones: [], periodo, empresa: "Loja" });
-    expect(r).toEqual({ enviado: false, falhas: ["E-mail a@x.com: not_configured"] });
+    expect(r).toEqual({ enviado: false, falhas: ["E-mail a@x.com: not_configured"], telefonesComFalha: [] });
   });
 
   it("sem nenhum destino não gera PDF", async () => {
     const d = deps();
     const r = await enviarRelatorio(d, { emails: [], telefones: [], periodo, empresa: "Loja" });
-    expect(r).toEqual({ enviado: false, falhas: ["Nenhum e-mail ou telefone cadastrado."] });
+    expect(r).toEqual({ enviado: false, falhas: ["Nenhum e-mail ou telefone cadastrado."], telefonesComFalha: [] });
     expect(d.gerarPdf).not.toHaveBeenCalled();
   });
 });

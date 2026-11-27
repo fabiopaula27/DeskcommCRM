@@ -56,6 +56,21 @@ export async function GET(req: NextRequest): Promise<Response> {
   }
   const b = data as Bruto;
 
+  // Fila escolhida: a distribuição vem da função por fila (migration 9114).
+  // Sem ela aplicada, segue a distribuição geral — o filtro só não restringe.
+  const setor = uuidOuNulo(ctx.busca.get("setor_id"));
+  if (setor) {
+    const porFila = await ctx.supabase.rpc("fn_relatorio_distribuicoes", {
+      p_org: ctx.orgId,
+      p_from: ctx.from.toISOString(),
+      p_to: ctx.to.toISOString(),
+      p_setor: setor,
+    });
+    if (!porFila.error && Array.isArray(porFila.data)) {
+      b.distribuicoes = porFila.data as Bruto["distribuicoes"];
+    }
+  }
+
   const cartao = (chave: keyof Numeros) => ({
     hoje: b.hoje[chave],
     ontem: b.ontem[chave],

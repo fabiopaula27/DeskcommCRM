@@ -59,6 +59,11 @@ export async function GET(req: NextRequest): Promise<Response> {
         gasto_estimado_usd: t.enviados * tarifaDaCategoria(t.categoria),
       })),
       nomes: b.nomes,
+      // Sem categoria conhecida (nula ou antiga) não tem tarifa e fica fora do gasto.
+      sem_categoria: (() => {
+        const fora = b.por_template.filter((t) => tarifaDaCategoria(t.categoria) === 0);
+        return { templates: fora.length, enviados: fora.reduce((s, t) => s + t.enviados, 0) };
+      })(),
     },
     { requestId },
   );

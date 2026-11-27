@@ -32,7 +32,7 @@ export default async function RelatoriosPage() {
   }
 
   const supabase = await createClient();
-  const [{ data: org }, { data: membros }, { data: pipelines }] = await Promise.all([
+  const [{ data: org }, { data: membros }, { data: pipelines }, { data: setores }] = await Promise.all([
     supabase.from("organizations").select("timezone, currency").eq("id", activeOrg.orgId).maybeSingle(),
     supabase
       .from("user_organizations")
@@ -45,6 +45,7 @@ export default async function RelatoriosPage() {
       .eq("organization_id", activeOrg.orgId)
       .eq("is_archived", false)
       .order("position"),
+    supabase.from("attendant_sectors").select("id, name").eq("organization_id", activeOrg.orgId).order("name"),
   ]);
 
   const tz = fusoUtilizavel(org?.timezone ?? null);
@@ -72,6 +73,7 @@ export default async function RelatoriosPage() {
       moeda={org?.currency || "BRL"}
       pessoas={pessoas}
       funis={funis}
+      filas={(setores ?? []).map((s) => ({ id: s.id, nome: s.name }))}
     />
   );
 }

@@ -51,12 +51,14 @@ export function RelatoriosClient({
   moeda,
   pessoas,
   funis,
+  filas = [],
 }: {
   periodoInicial: { from: string; to: string };
   tz: string;
   moeda: string;
   pessoas: Pessoa[];
   funis: FunilOpcao[];
+  filas?: { id: string; nome: string }[];
 }) {
   const t = useT();
   const router = useRouter();
@@ -165,7 +167,7 @@ export function RelatoriosClient({
         </TabsList>
 
         <TabsContent value="atendimento" className="mt-4">
-          <AbaAtendimento filtros={filtros} moeda={moeda} pessoas={pessoas} />
+          <AbaAtendimento filtros={filtros} moeda={moeda} pessoas={pessoas} filas={filas} />
         </TabsContent>
         <TabsContent value="leads" className="mt-4">
           <AbaLeadsEVendas filtros={filtros} moeda={moeda} pessoas={pessoas} />
