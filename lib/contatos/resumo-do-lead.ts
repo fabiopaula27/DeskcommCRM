@@ -3,6 +3,9 @@
  * para o vendedor. `montarContextoDoLead` é puro (testado); a rota faz o I/O e
  * chama o modelo pelo ponto `draft_suggestion` (ajudante do atendente).
  */
+import { tagDeIdioma } from "@/lib/i18n/datas";
+import { IDIOMA_PADRAO } from "@/lib/i18n/idiomas";
+
 export const LIMITE_DO_CONTEXTO = 12_000;
 
 export type DadosDoLead = {
@@ -17,7 +20,7 @@ export type DadosDoLead = {
 
 function quando(iso: string, fuso: string): string {
   try {
-    return new Intl.DateTimeFormat("pt-BR", { timeZone: fuso, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+    return new Intl.DateTimeFormat(tagDeIdioma(IDIOMA_PADRAO), { timeZone: fuso, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
   } catch {
     return iso.slice(0, 16).replace("T", " ");
   }
