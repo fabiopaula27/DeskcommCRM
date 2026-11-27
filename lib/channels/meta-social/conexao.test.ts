@@ -16,18 +16,18 @@ function fetchFalso(respostas: Record<string, unknown>) {
   return { f, chamadas };
 }
 
-/** Banco falso: `channel_sessions` com as linhas dadas; registra insert/update. */
-function bancoFalso(linhas: { id: string; organization_id: string; archived_at: string | null; meta_social_account_id: string }[]) {
+/** Banco falso: canal ativo da MESMA empresa (ou nenhum) e o erro do insert. */
+function bancoFalso(ativoDaEmpresa: { id: string } | null, erroDoInsert: { code: string; message: string } | null = null) {
   const inserts: Record<string, unknown>[] = [];
   const updates: Record<string, unknown>[] = [];
   const db = {
     from: () => {
-      const filtros: Record<string, unknown> = {};
       const q = {
         select: () => q,
-        eq: (c: string, v: unknown) => ((filtros[c] = v), q),
-        order: () => Promise.resolve({ data: linhas.filter((l) => l.meta_social_account_id === filtros.meta_social_account_id), error: null }),
-        insert: async (row: Record<string, unknown>) => (inserts.push(row), { error: null }),
+        eq: () => q,
+        is: () => q,
+        maybeSingle: async () => ({ data: ativoDaEmpresa, error: null }),
+        insert: async (row: Record<string, unknown>) => (inserts.push(row), { error: erroDoInsert }),
         update: (row: Record<string, unknown>) => (updates.push(row), { eq: () => ({ eq: async () => ({ error: null }) }) }),
       };
       return q;
@@ -67,7 +67,7 @@ describe("listarContas", () => {
 
 describe("conectarContas", () => {
   it("cria os canais, cifra o token e inscreve a página UMA vez", async () => {
-    const { db, inserts } = bancoFalso([]);
+    const { db, inserts } = bancoFalso(null);
     const { f, chamadas } = fetchFalso({});
     const r = await conectarContas(db, "orgA", [PAGINA, IG], f);
     expect(r.conectadas).toEqual(["Gestor da Web", "@gestordaweb"]);
@@ -76,17 +76,19 @@ describe("conectarContas", () => {
     expect(chamadas.filter((c) => c.includes("subscribed_apps"))).toHaveLength(1);
   });
 
-  it("conta ativa em OUTRA empresa não é tomada", async () => {
-    const { db, inserts } = bancoFalso([{ id: "s9", organization_id: "orgB", archived_at: null, meta_social_account_id: "P1" }]);
-    const r = await conectarContas(db, "orgA", [PAGINA], fetchFalso({}).f);
+  it("conta ativa em OUTRA empresa: o índice único recusa e ela não é tomada", async () => {
+    const { db } = bancoFalso(null, { code: "23505", message: "duplicate key" });
+    const { f, chamadas } = fetchFalso({});
+    const r = await conectarContas(db, "orgA", [PAGINA], f);
     expect(r.emOutraEmpresa).toEqual(["Gestor da Web"]);
-    expect(inserts).toHaveLength(0);
+    expect(r.conectadas).toEqual([]);
+    expect(chamadas).toHaveLength(0);
   });
 
-  it("canal arquivado da mesma empresa é reativado, não duplicado", async () => {
-    const { db, inserts, updates } = bancoFalso([{ id: "s1", organization_id: "orgA", archived_at: "2026-11-01", meta_social_account_id: "P1" }]);
+  it("canal já ativo na mesma empresa é atualizado (token novo), não duplicado", async () => {
+    const { db, inserts, updates } = bancoFalso({ id: "s1" });
     await conectarContas(db, "orgA", [PAGINA], fetchFalso({}).f);
     expect(inserts).toHaveLength(0);
-    expect(updates[0]).toMatchObject({ archived_at: null, status: "WORKING" });
+    expect(updates[0]).toMatchObject({ meta_social_token_encrypted: "enc(tokP1)", status: "WORKING" });
   });
 });

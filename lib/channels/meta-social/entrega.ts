@@ -17,21 +17,21 @@ export const PROVIDER_META_SOCIAL = "meta_social";
 
 export type SessaoDaConta = { id: string; organization_id: string };
 
+/**
+ * O canal ativo da conta do evento. Por FUNÇÃO no banco (migration 9116), não
+ * por consulta solta: o webhook do app é um endereço só para todas as empresas,
+ * então a organização só pode sair da conta — e o índice único parcial garante
+ * no máximo um canal ativo por conta, o que torna a resolução exata.
+ */
 export async function sessaoDaConta(
   db: SupabaseClient,
   contaId: string,
   plataforma: PlataformaSocial,
 ): Promise<SessaoDaConta | null> {
-  const { data, error } = await db
-    .from("channel_sessions")
-    .select("id, organization_id")
-    .eq("provider", PROVIDER_META_SOCIAL)
-    .eq("meta_social_account_id", contaId)
-    .eq("meta_social_platform", plataforma)
-    .is("archived_at", null)
-    .maybeSingle();
+  const { data, error } = await db.rpc("fn_canal_meta_social_da_conta", { p_conta: contaId, p_plataforma: plataforma });
   if (error) throw new Error(`meta_social_sessao: ${error.message}`);
-  return (data as SessaoDaConta | null) ?? null;
+  const linhas = (data ?? []) as SessaoDaConta[];
+  return linhas[0] ?? null;
 }
 
 export type PerfilDoLead = { nome: string | null; usuario: string | null };

@@ -34,7 +34,7 @@ describe("MetaSocialConexoes", () => {
     estado = { canais: [], pronto: false, falta: ["META_APP_ID", "META_LOGIN_CONFIG_ID"], podeConectar: true };
     montar();
     expect((await screen.findByTestId("falta-config")).textContent).toContain("META_APP_ID");
-    expect(screen.queryByRole("link", { name: "Conectar com Facebook" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Conectar com Facebook" })).toBeNull();
   });
 
   it("lista os canais e desconecta", async () => {
@@ -47,7 +47,7 @@ describe("MetaSocialConexoes", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     montar();
     expect(await screen.findByText("Instagram · @gestordaweb")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Conectar com Facebook" }).getAttribute("href")).toBe("/api/v1/channels/meta-social/login");
+    expect(screen.getByRole("button", { name: "Conectar com Facebook" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Desconectar" }));
     await waitFor(() => expect(apagar).toHaveBeenCalledWith("/api/v1/channels/meta-social/s1"));
   });

@@ -54,6 +54,28 @@ create unique index if not exists channel_sessions_meta_social_account_ativo_uni
   on public.channel_sessions (meta_social_account_id)
   where meta_social_account_id is not null and archived_at is null;
 
+-- O webhook do app da Meta é UM endereço para todas as empresas: a organização
+-- só pode vir da CONTA do evento. O índice único acima garante no máximo uma
+-- linha ativa por conta, então esta resolução é exata. Só o service_role chama.
+create or replace function public.fn_canal_meta_social_da_conta(p_conta text, p_plataforma text)
+returns table (id uuid, organization_id uuid)
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select cs.id, cs.organization_id
+    from public.channel_sessions cs
+   where cs.provider = 'meta_social'
+     and cs.meta_social_account_id = p_conta
+     and cs.meta_social_platform = p_plataforma
+     and cs.archived_at is null
+   limit 1;
+$$;
+
+revoke execute on function public.fn_canal_meta_social_da_conta(text, text) from public, anon, authenticated;
+grant execute on function public.fn_canal_meta_social_da_conta(text, text) to service_role;
+
 comment on column public.channel_sessions.meta_social_account_id is
   'Id da página (Messenger) ou da conta IG (Instagram) na Meta — sessionRef do canal meta_social (lib/channels/session-ref.ts).';
 

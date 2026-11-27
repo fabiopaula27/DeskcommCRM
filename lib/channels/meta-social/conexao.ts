@@ -116,9 +116,14 @@ export async function listarContas(tokenDoUsuario: string, fetcher: typeof fetch
 
 export type ResultadoDaConexao = { conectadas: string[]; emOutraEmpresa: string[]; falhas: string[] };
 
-type Linha = { id: string; organization_id: string; archived_at: string | null };
+/** Violação do índice único: a conta já está ATIVA em outra empresa. */
+const CONTA_JA_ATIVA = "23505";
 
-/** Cria ou reativa os canais e inscreve cada página no app. */
+/**
+ * Cria (ou atualiza, se já ativo na MESMA empresa) os canais e inscreve cada
+ * página no app. Quem barra a mesma conta em duas empresas é o índice único
+ * parcial da 9116 — o CRM nunca lê canal de outra organização.
+ */
 export async function conectarContas(
   db: SupabaseClient,
   organizationId: string,
@@ -128,17 +133,6 @@ export async function conectarContas(
   const r: ResultadoDaConexao = { conectadas: [], emOutraEmpresa: [], falhas: [] };
   const paginasInscritas = new Set<string>();
   for (const c of contas) {
-    const { data: existentes } = await db
-      .from("channel_sessions")
-      .select("id, organization_id, archived_at")
-      .eq("provider", PROVIDER_META_SOCIAL)
-      .eq("meta_social_account_id", c.contaId)
-      .order("created_at", { ascending: false });
-    const linhas = (existentes ?? []) as Linha[];
-    if (linhas.some((l) => !l.archived_at && l.organization_id !== organizationId)) {
-      r.emOutraEmpresa.push(c.nome);
-      continue;
-    }
     const tokenCifrado = await encryptWebhookSecret(db, c.tokenDaPagina);
     if (!tokenCifrado) {
       r.falhas.push(c.nome);
@@ -151,13 +145,20 @@ export async function conectarContas(
       display_name: `${c.plataforma === "instagram" ? "Instagram" : "Messenger"} · ${c.nome}`,
       status: "WORKING",
     };
-    const daOrg = linhas.find((l) => l.organization_id === organizationId);
-    let erro: { message: string } | null = null;
-    if (daOrg) {
+    const { data: ativo } = await db
+      .from("channel_sessions")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("provider", PROVIDER_META_SOCIAL)
+      .eq("meta_social_account_id", c.contaId)
+      .is("archived_at", null)
+      .maybeSingle();
+    let erro: { code?: string; message: string } | null = null;
+    if (ativo) {
       ({ error: erro } = await db
         .from("channel_sessions")
-        .update({ ...campos, archived_at: null })
-        .eq("id", daOrg.id)
+        .update(campos)
+        .eq("id", (ativo as { id: string }).id)
         .eq("organization_id", organizationId));
     } else {
       const segredo = await encryptWebhookSecret(db, randomBytes(32).toString("hex"));
@@ -171,15 +172,17 @@ export async function conectarContas(
       }));
     }
     if (erro) {
-      r.falhas.push(c.nome);
+      (erro.code === CONTA_JA_ATIVA ? r.emOutraEmpresa : r.falhas).push(c.nome);
       continue;
     }
     if (!paginasInscritas.has(c.paginaId)) {
       try {
-        await graphSocial(c.tokenDaPagina, `${c.paginaId}/subscribed_apps`, {
-          method: "POST",
-          params: { subscribed_fields: CAMPOS_DA_PAGINA },
-        }, fetcher);
+        await graphSocial(
+          c.tokenDaPagina,
+          `${c.paginaId}/subscribed_apps`,
+          { method: "POST", params: { subscribed_fields: CAMPOS_DA_PAGINA } },
+          fetcher,
+        );
         paginasInscritas.add(c.paginaId);
       } catch {
         r.falhas.push(c.nome);

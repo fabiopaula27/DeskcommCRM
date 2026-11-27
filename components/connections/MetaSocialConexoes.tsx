@@ -16,6 +16,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 
+export const URL_DO_LOGIN = "/api/v1/channels/meta-social/login";
+
 type Canal = { id: string; plataforma: "facebook" | "instagram"; nome: string; status: string; conectadoEm: string };
 type Estado = { canais: Canal[]; pronto: boolean; falta: string[]; podeConectar: boolean };
 
@@ -59,9 +61,9 @@ export function MetaSocialConexoes() {
           </p>
         </div>
         {estado.data?.podeConectar && estado.data.pronto && (
-          <Button asChild>
-            <a href="/api/v1/channels/meta-social/login">{t("Conectar com Facebook")}</a>
-          </Button>
+          // Navegação COMPLETA (não client-side): a rota responde um redirect
+          // para facebook.com e grava o cookie de vínculo.
+          <Button onClick={() => window.location.assign(URL_DO_LOGIN)}>{t("Conectar com Facebook")}</Button>
         )}
       </div>
 
