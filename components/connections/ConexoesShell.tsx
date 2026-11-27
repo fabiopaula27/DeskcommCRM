@@ -3,6 +3,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+import { MetaSocialConexoes } from "./MetaSocialConexoes";
 import { RedesSociaisClient } from "./RedesSociaisClient";
 import { CanalEvolutionClient } from "./CanalEvolutionClient";
 import { CanalGraphParceiroClient } from "./CanalGraphParceiroClient";
@@ -117,7 +118,7 @@ export function ConexoesShell({
         <div className="flex flex-col gap-4">
           <CanalEvolutionClient isConfigured={evolutionConfigured} />
           {/* Evolution é o canal principal: com ela configurada, o quadro do
-              WAHA fica escondido (reserva). Sem Evolution, o WAHA volta. */}
+              o cartão por QR antigo fica escondido (reserva) e volta quando o outro não está configurado. */}
           {!evolutionConfigured && <ConnectionsClient wahaConfigured={wahaConfigured} />}
         </div>
       </TabsContent>
@@ -125,7 +126,12 @@ export function ConexoesShell({
       <TabsContent value="telefonia" className="mt-0">
         <TelefoniaClient />
       </TabsContent>
-      <TabsContent value="sociais" className="mt-0"><RedesSociaisClient /></TabsContent>
+      <TabsContent value="sociais" className="mt-0">
+        <div className="space-y-6">
+          <MetaSocialConexoes />
+          <RedesSociaisClient />
+        </div>
+      </TabsContent>
 
       <TabsContent value="voz" className="mt-0">
         <CanalVozClient wacallsConfigured={wacallsConfigured} />
