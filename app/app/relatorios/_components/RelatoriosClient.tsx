@@ -160,7 +160,12 @@ export function RelatoriosClient({
       >
         <TabsList className="flex h-auto w-full flex-wrap justify-start print:hidden">
           {ABAS.map((a) => (
-            <TabsTrigger key={a.valor} value={a.valor}>
+            <TabsTrigger
+              key={a.valor}
+              value={a.valor}
+              // Aba aberta em destaque (cor da marca), para saber onde se está no painel.
+              className="text-text-muted hover:text-text data-[state=active]:bg-accent data-[state=active]:font-semibold data-[state=active]:text-accent-fg data-[state=active]:shadow-sm"
+            >
               {t(a.rotulo)}
             </TabsTrigger>
           ))}
