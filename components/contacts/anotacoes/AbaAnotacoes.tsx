@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { FormularioDeTarefa } from "@/app/app/tasks/_components/FormularioDeTarefa";
+import { TextoComNegrito } from "@/components/contacts/TextoComNegrito";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -359,7 +360,7 @@ function ResumoDaIA({ contactId, campoResumo, camposAtuais }: { contactId: strin
       </div>
       {resumo ? (
         <>
-          <div className="whitespace-pre-wrap text-sm" data-testid="texto-do-resumo">{resumo.texto}</div>
+          <div className="whitespace-pre-wrap text-sm" data-testid="texto-do-resumo"><TextoComNegrito texto={resumo.texto} /></div>
           {campoResumo && !resumo.semDados && (
             <Button
               size="sm"

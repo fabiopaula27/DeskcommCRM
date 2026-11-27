@@ -42,6 +42,7 @@ import { camposDoFunil, camposPorEscopo } from "@/lib/leads/campos-do-funil";
 import { canonicalTagsDoFunil } from "@/lib/contacts/etiquetas";
 import { ROLE_RANK, roleAtLeast } from "@/lib/auth/types";
 import { TimelineView } from "@/components/contacts/TimelineView";
+import { TextoComNegrito } from "@/components/contacts/TextoComNegrito";
 import { AbaAnotacoes } from "@/components/contacts/anotacoes/AbaAnotacoes";
 import { campoDoResumo } from "@/lib/contatos/linha-do-tempo-das-anotacoes";
 import { EditContactDialog } from "@/components/contacts/EditContactDialog";
@@ -664,7 +665,9 @@ export function ContactDetailClient({ contactId, paineisDeModulo = [], acessosMc
                 return (
                   <div key={campo.key} data-testid={`campo-do-contato-${campo.key}`}>
                     <dt className="text-xs uppercase text-muted-foreground">{campo.label}</dt>
-                    <dd className="mt-1 break-words">{texto}</dd>
+                    <dd className="mt-1 break-words">
+                      {typeof bruto === "string" && bruto.includes("**") ? <TextoComNegrito texto={bruto} /> : texto}
+                    </dd>
                   </div>
                 );
               })}
