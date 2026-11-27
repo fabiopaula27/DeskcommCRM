@@ -248,6 +248,31 @@ export async function cascadeRedactContact(args: CascadeArgs): Promise<CascadeRe
     }
   }
 
+  // ÁUDIOS DAS ANOTAÇÕES DO LEAD (migration 9115) — antes da RPC: o gatilho
+  // da 9115 apaga as linhas na anonimização, e sem a linha ninguém acha o
+  // arquivo. Só o que mora na pasta do próprio contato (a fila remove com o
+  // admin). Instalação sem a tabela (42P01/PGRST205) segue sem este passo.
+  const { data: notasDoLead, error: notasDoLeadErro } = await admin
+    .from("contact_notes")
+    .select("audio_path")
+    .eq("organization_id", args.organizationId)
+    .eq("contact_id", args.contactId)
+    .not("audio_path", "is", null);
+  const semTabela = notasDoLeadErro?.code === "42P01" || notasDoLeadErro?.code === "PGRST205";
+  if (notasDoLeadErro && !semTabela) {
+    throw new Error(`[lgpd-redact-cascade] anotações do lead não lidas: ${notasDoLeadErro.message}`);
+  }
+  const prefixoDoContato = `${args.organizationId}/${args.contactId}/`;
+  for (const nota of (notasDoLead ?? []) as { audio_path: string | null }[]) {
+    if (!nota.audio_path || !nota.audio_path.startsWith(prefixoDoContato)) continue;
+    await enfileirarMidiaNaFila(admin, {
+      organizationId: args.organizationId,
+      requestId: args.requestId,
+      bucket: "contact-notes",
+      objectPath: nota.audio_path,
+    });
+  }
+
   const { data, error } = await admin.rpc("fn_lgpd_cascade_redact_contact" as never, {
     p_organization_id: args.organizationId,
     p_contact_id: args.contactId,
