@@ -42,6 +42,8 @@ import { camposDoFunil, camposPorEscopo } from "@/lib/leads/campos-do-funil";
 import { canonicalTagsDoFunil } from "@/lib/contacts/etiquetas";
 import { ROLE_RANK, roleAtLeast } from "@/lib/auth/types";
 import { TimelineView } from "@/components/contacts/TimelineView";
+import { AbaAnotacoes } from "@/components/contacts/anotacoes/AbaAnotacoes";
+import { campoDoResumo } from "@/lib/contatos/linha-do-tempo-das-anotacoes";
 import { EditContactDialog } from "@/components/contacts/EditContactDialog";
 import { JuntarComOutraFicha } from "@/components/contacts/JuntarComOutraFicha";
 import { CartaoDaCarteira } from "@/components/contacts/CartaoDaCarteira";
@@ -482,6 +484,7 @@ export function ContactDetailClient({ contactId, paineisDeModulo = [], acessosMc
         <TabsList>
           <TabsTrigger value="overview">{t("Visão geral")}</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="notes">{t("Anotações")}</TabsTrigger>
           {isAdmin && <TabsTrigger value="lgpd">LGPD</TabsTrigger>}
         </TabsList>
 
@@ -708,6 +711,17 @@ export function ContactDetailClient({ contactId, paineisDeModulo = [], acessosMc
 
         <TabsContent value="timeline" className="mt-4">
           <TimelineView contactId={contactId} />
+        </TabsContent>
+
+        <TabsContent value="notes" className="mt-4">
+          <AbaAnotacoes
+            contactId={contactId}
+            podeEscrever={Boolean(activeOrg && ROLE_RANK[activeOrg.role] >= ROLE_RANK.agent) && !contact.is_anonymized}
+            campoResumo={campoDoResumo(
+              camposPorEscopo(camposDoFunil(pipelineQuery.data?.pipeline.settings ?? null), "contato"),
+            )}
+            camposAtuais={(contact.custom_fields as Record<string, unknown> | null) ?? {}}
+          />
         </TabsContent>
 
         {isAdmin && (

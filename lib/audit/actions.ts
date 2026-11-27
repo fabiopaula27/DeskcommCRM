@@ -1458,6 +1458,11 @@ export const AUDIT_ACTIONS = [
   // Relatórios › Envio agendado (migration 9113): quem mudou para onde os
   // números da empresa vão. Metadata leva só contagens, nunca os endereços.
   "report_schedule.updated",
+  // Anotações do lead (migration 9115). Metadata leva só o tipo, nunca o texto.
+  "contact_note.created",
+  "contact_note.updated",
+  "contact_note.deleted",
+  "contact.ai_summary",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */
