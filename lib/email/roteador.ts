@@ -73,6 +73,8 @@ interface SendArgs {
   replyTo?: string;
   fromName?: string;
   tags?: { name: string; value: string }[];
+  /** Arquivos anexados (ex.: o PDF do relatório agendado). */
+  attachments?: { filename: string; content: Buffer; contentType?: string }[];
 }
 
 /**
