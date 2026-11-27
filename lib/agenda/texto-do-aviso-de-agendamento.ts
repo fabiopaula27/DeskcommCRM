@@ -174,6 +174,18 @@ export interface ResumoDoDia {
   agenda: LinhaDoResumo[];
   /** O que foi marcado, remarcado ou cancelado entre 22h e 7h. */
   daNoite: MudancaDaNoite[];
+  /**
+   * Compromissos do dia nas agendas do Google de quem recebe o resumo (só
+   * quando o destino é o número de um membro da equipe). O que cair no mesmo
+   * minuto de um agendamento do CRM é o próprio agendamento e não se repete.
+   */
+  doGoogle?: CompromissoDoGoogle[];
+}
+
+export interface CompromissoDoGoogle {
+  inicio: Date;
+  titulo: string;
+  diaInteiro: boolean;
 }
 
 /** O resumo das 7h. Função total: nunca lança, nunca devolve vazio. */
@@ -184,11 +196,13 @@ export function montarResumoDoDia(resumo: ResumoDoDia): string {
     "",
   ];
 
-  const agenda = [...resumo.agenda].sort((a, b) => a.inicio.getTime() - b.inicio.getTime());
-  if (agenda.length === 0) {
-    linhas.push(t("Nenhum agendamento para hoje."));
-  } else {
-    for (const linha of agenda) {
+  const minuto = (d: Date) => Math.floor(d.getTime() / 60_000);
+  const minutosDoCrm = new Set(resumo.agenda.map((a) => minuto(a.inicio)));
+  const google = (resumo.doGoogle ?? []).filter((g) => g.diaInteiro || !minutosDoCrm.has(minuto(g.inicio)));
+
+  type Item = { inicio: Date; diaInteiro: boolean; texto: string };
+  const itens: Item[] = [
+    ...resumo.agenda.map((linha) => {
       const partes = [soAHora(linha.inicio, resumo.fuso, resumo.idioma)];
       const cliente = primeiroNome(linha.cliente);
       if (cliente) partes.push(cliente);
@@ -196,10 +210,21 @@ export function montarResumoDoDia(resumo: ResumoDoDia): string {
       if (servico) partes.push(servico);
       const profissional = primeiroNome(linha.profissional);
       if (profissional) partes.push(`${t("com")} ${profissional}`);
-      linhas.push(partes.join(" · "));
-    }
+      return { inicio: linha.inicio, diaInteiro: false, texto: partes.join(" · ") };
+    }),
+    ...google.map((g) => ({
+      inicio: g.inicio,
+      diaInteiro: g.diaInteiro,
+      texto: `${g.diaInteiro ? t("Dia todo") : soAHora(g.inicio, resumo.fuso, resumo.idioma)} · ${curto(g.titulo, 60) || t("Compromisso")} (Google)`,
+    })),
+  ].sort((a, b) => (a.diaInteiro === b.diaInteiro ? a.inicio.getTime() - b.inicio.getTime() : a.diaInteiro ? -1 : 1));
+
+  if (itens.length === 0) {
+    linhas.push(t("Nenhum agendamento para hoje."));
+  } else {
+    for (const item of itens) linhas.push(item.texto);
   }
-  linhas.push("", `${t("Total")}: ${agenda.length}`);
+  linhas.push("", `${t("Total")}: ${itens.length}`);
 
   if (resumo.daNoite.length > 0) {
     linhas.push("", t("Durante a noite (22h às 7h):"));

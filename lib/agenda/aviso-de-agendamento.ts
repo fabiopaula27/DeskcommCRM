@@ -67,6 +67,7 @@ import { logger } from "@/lib/logger";
 import {
   montarAvisoDeAgendamento,
   montarResumoDoDia,
+  type CompromissoDoGoogle,
   origemDoAutor,
   type LinhaDoResumo,
   type MudancaDaNoite,
@@ -192,6 +193,17 @@ export interface AvisoDeAgendamentoDb
   houveAvisoEnviado(orgId: string, appointmentId: string, alvo: AlvoDaEntregaDeAgendamento): Promise<boolean>;
   /** A agenda do dia, `pending`/`confirmed`, entre os dois instantes. */
   agendaEntre(orgId: string, inicio: Date, fim: Date): Promise<AgendamentoDoAviso[]>;
+  /**
+   * Compromissos do dia nas agendas do Google do MEMBRO cujo WhatsApp (perfil
+   * em Equipe) é este telefone. Número que não é de ninguém da equipe → vazio.
+   * Opcional: sem ele o resumo segue só com a agenda do CRM.
+   */
+  compromissosDoGoogleDoNumero?(
+    orgId: string,
+    telefone: string,
+    inicio: Date,
+    fim: Date,
+  ): Promise<CompromissoDoGoogle[]>;
   /** As entregas `para_o_resumo` DESTE destino ainda não contadas, com o agendamento de cada uma. */
   represadasParaOResumo(
     orgId: string,
@@ -491,10 +503,21 @@ async function resumoParaUmDestino(
   const inicioDoDia = instanteDe({ ano: parede.ano, mes: parede.mes, dia: parede.dia }, fuso);
   const amanha = partesNoFuso(new Date(inicioDoDia.getTime() + 36 * 60 * 60 * 1000), fuso);
   const fimDoDia = instanteDe({ ano: amanha.ano, mes: amanha.mes, dia: amanha.dia }, fuso);
-  const [agendaBruta, represadas, marca] = await Promise.all([
+  const [agendaBruta, represadas, marca, doGoogle] = await Promise.all([
     deps.db.agendaEntre(orgId, inicioDoDia, fimDoDia),
     deps.db.represadasParaOResumo(orgId, alvo),
     deps.db.marcaDaOrganizacao(orgId),
+    // Só para NÚMERO: num grupo, a agenda pessoal de alguém iria para todos.
+    // Falha aqui não segura o resumo: ele sai com a agenda do CRM.
+    alvo === "numero" && deps.db.compromissosDoGoogleDoNumero
+      ? deps.db.compromissosDoGoogleDoNumero(orgId, destino, inicioDoDia, fimDoDia).catch((err: unknown) => {
+          logger.warn("[aviso-de-agendamento] compromissos do Google não lidos", {
+            organizationId: orgId,
+            causa: err instanceof Error ? err.message : String(err),
+          });
+          return [] as CompromissoDoGoogle[];
+        })
+      : Promise.resolve([] as CompromissoDoGoogle[]),
   ]);
 
   const nomes = criaCacheDeNomes(deps.db, orgId);
@@ -516,7 +539,7 @@ async function resumoParaUmDestino(
     });
   }
 
-  const body = montarResumoDoDia({ marca: marca.nome, idioma: marca.idioma, fuso, dia: agora, agenda, daNoite });
+  const body = montarResumoDoDia({ marca: marca.nome, idioma: marca.idioma, fuso, dia: agora, agenda, daNoite, doGoogle });
   const desfecho = await entrega_(deps, {
     orgId,
     channelSessionId,
@@ -906,6 +929,55 @@ export function createSupabaseAvisoDeAgendamentoDb(
         .limit(60);
       if (error) throw new Error(error.message);
       return (data ?? []) as AgendamentoDoAviso[];
+    },
+
+    async compromissosDoGoogleDoNumero(orgId, telefone, inicio, fim) {
+      // 1. Quem da equipe tem este WhatsApp no perfil (variações com/sem o 9).
+      const { phoneLookupVariants } = await import("@/lib/channels/phone-variants");
+      const variantes = phoneLookupVariants(telefone).map((v) => v.replace(/\D/g, "")).filter(Boolean);
+      if (variantes.length === 0) return [];
+      const { data: membros, error: erroMembros } = await admin
+        .from("user_organizations")
+        .select("user_id, whatsapp_e164")
+        .eq("organization_id", orgId)
+        .is("revoked_at", null)
+        .not("whatsapp_e164", "is", null);
+      if (erroMembros) throw new Error(erroMembros.message);
+      const donos = ((membros ?? []) as { user_id: string; whatsapp_e164: string | null }[])
+        .filter((m) => variantes.includes((m.whatsapp_e164 ?? "").replace(/\D/g, "")))
+        .map((m) => m.user_id);
+      if (donos.length === 0) return [];
+
+      // 2. As conexões de agenda dessas pessoas.
+      const { data: conexoes, error: erroConexoes } = await admin
+        .from("calendar_connections")
+        .select("id")
+        .eq("organization_id", orgId)
+        .in("user_id", donos);
+      if (erroConexoes) throw new Error(erroConexoes.message);
+      const ids = ((conexoes ?? []) as { id: string }[]).map((c) => c.id);
+      if (ids.length === 0) return [];
+
+      // 3. Os eventos do dia já sincronizados: sem cancelados nem "disponível".
+      const { data: eventos, error: erroEventos } = await admin
+        .from("calendar_external_events")
+        .select("starts_at, ends_at, title, is_all_day, status, transparency")
+        .eq("organization_id", orgId)
+        .in("connection_id", ids)
+        .lt("starts_at", fim.toISOString())
+        .gt("ends_at", inicio.toISOString())
+        .order("starts_at", { ascending: true })
+        .limit(60);
+      if (erroEventos) throw new Error(erroEventos.message);
+      return ((eventos ?? []) as {
+        starts_at: string;
+        title: string | null;
+        is_all_day: boolean | null;
+        status: string | null;
+        transparency: string | null;
+      }[])
+        .filter((e) => e.status !== "cancelled" && e.transparency !== "transparent")
+        .map((e) => ({ inicio: new Date(e.starts_at), titulo: e.title ?? "", diaInteiro: !!e.is_all_day }));
     },
 
     async represadasParaOResumo(orgId, alvo) {

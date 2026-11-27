@@ -78,6 +78,8 @@ function novoMundo(): Mundo {
     destinoProprio: false,
     anonimizado: false,
     entregas: new Map(),
+    googlePedidoPara: [] as string[],
+    doGoogle: [] as { inicio: Date; titulo: string; diaInteiro: boolean }[],
     enviadas: [],
     para: [],
     grupoFalha: false,
@@ -166,6 +168,10 @@ function db(): AvisoDeAgendamentoDb {
         (e) => e.appointment_id === appointmentId && e.alvo === alvo && (e.status === "enviado" || e.status === "no_resumo"),
       ),
     agendaEntre: async () => (mundo.agendamento ? [mundo.agendamento] : []),
+    compromissosDoGoogleDoNumero: async (_o, telefone) => {
+      mundo.googlePedidoPara.push(telefone);
+      return mundo.doGoogle;
+    },
     represadasParaOResumo: async (_o, alvo) =>
       [...mundo.entregas.values()]
         .filter((e) => e.status === "para_o_resumo" && e.alvo === alvo)
@@ -384,6 +390,22 @@ describe("aplicaAvisoDeAgendamento", () => {
 });
 
 describe("aplicaResumoDoDia", () => {
+  it("número de membro: o resumo traz os compromissos do Google dele", async () => {
+    mundo.doGoogle = [{ inicio: new Date(SETE_E_DEZ.getTime() + 6 * 3600_000), titulo: "Reunião Humbertolimpeza", diaInteiro: false }];
+    const r = await aplicaResumoDoDia(deps(SETE_E_DEZ), ORG);
+    expect(r.status).toBe("ok");
+    expect(mundo.googlePedidoPara).toEqual(["+5531999998888"]);
+    expect(mundo.enviadas[0]).toContain("Reunião Humbertolimpeza (Google)");
+  });
+
+  it("grupo não recebe compromissos do Google de ninguém", async () => {
+    mundo.config = { ...mundo.config!, telefone_destino: null, grupo_destino: "120363025246125486@g.us" };
+    mundo.doGoogle = [{ inicio: new Date(SETE_E_DEZ.getTime() + 6 * 3600_000), titulo: "Dentista", diaInteiro: false }];
+    await aplicaResumoDoDia(deps(SETE_E_DEZ), ORG);
+    expect(mundo.googlePedidoPara).toEqual([]);
+    expect(mundo.enviadas.join("\n")).not.toContain("Dentista");
+  });
+
   it("fora das 7h–10h locais não faz nada", async () => {
     const r = await aplicaResumoDoDia(deps(TARDE), ORG);
     expect(r).toEqual({ status: "skipped", detail: "fora_da_hora" });

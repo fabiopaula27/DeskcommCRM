@@ -102,6 +102,40 @@ describe("origemDoAutor", () => {
 });
 
 describe("montarResumoDoDia", () => {
+  it("junta os compromissos do Google aos agendamentos, em ordem, sem repetir o mesmo horário", () => {
+    const texto = montarResumoDoDia({
+      marca: "Clínica Sol",
+      idioma: "pt-BR",
+      fuso: "America/Sao_Paulo",
+      dia: new Date("2026-11-27T10:10:00.000Z"),
+      agenda: [{ inicio: new Date("2026-11-27T12:00:00.000Z"), cliente: "Maria Souza", servico: "Limpeza", profissional: null }],
+      daNoite: [],
+      doGoogle: [
+        { inicio: new Date("2026-11-27T17:00:00.000Z"), titulo: "Reuniao Humbertolimpeza (Junior e Sergio)", diaInteiro: false },
+        { inicio: new Date("2026-11-27T12:00:00.000Z"), titulo: "Limpeza Maria", diaInteiro: false },
+        { inicio: new Date("2026-11-27T03:00:00.000Z"), titulo: "Aniversário da Ana", diaInteiro: true },
+      ],
+    });
+    const linhas = texto.split("\n");
+    const nove = linhas.findIndex((l) => l.startsWith("09:00"));
+    const quatorze = linhas.findIndex((l) => l.startsWith("14:00"));
+    expect(linhas[nove]).toBe("09:00 · Maria · Limpeza");
+    expect(linhas[quatorze]).toBe("14:00 · Reuniao Humbertolimpeza (Junior e Sergio) (Google)");
+    expect(linhas.filter((l) => l.startsWith("09:00"))).toHaveLength(1);
+    expect(texto).toContain("Dia todo · Aniversário da Ana (Google)");
+    expect(texto).toContain("Total: 3");
+  });
+
+  it("só compromissos do Google: não diz que o dia está vazio", () => {
+    const texto = montarResumoDoDia({
+      marca: "X", idioma: "pt-BR", fuso: "America/Sao_Paulo", dia: new Date("2026-11-27T10:10:00.000Z"),
+      agenda: [], daNoite: [],
+      doGoogle: [{ inicio: new Date("2026-11-27T20:00:00.000Z"), titulo: "Dentista", diaInteiro: false }],
+    });
+    expect(texto).not.toContain("Nenhum agendamento para hoje.");
+    expect(texto).toContain("17:00 · Dentista (Google)");
+  });
+
   it("lista em ordem de horário, com o total, e as mudanças da noite", () => {
     const texto = montarResumoDoDia({
       marca: "Clínica Sol",
