@@ -1,7 +1,7 @@
 /** Os canais Messenger/Instagram da empresa, para a tela de Conexões. */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { PROVIDER_META_SOCIAL } from "./entrega";
+import { PROVIDER_META_SOCIAL } from "./constantes";
 import type { PlataformaSocial } from "./parser";
 
 export type CanalMetaSocial = {

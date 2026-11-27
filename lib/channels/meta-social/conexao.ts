@@ -16,7 +16,7 @@ import { metadataInicialDoCanal } from "@/lib/ai/elegibilidade/pre-go-live";
 import { encryptWebhookSecret } from "@/lib/webhooks/secrets";
 
 import { credencialDaConta } from "./credenciais";
-import { PROVIDER_META_SOCIAL } from "./entrega";
+import { PROVIDER_META_SOCIAL } from "./constantes";
 import { GRAPH_SOCIAL, graphSocial } from "./graph";
 import type { PlataformaSocial } from "./parser";
 

@@ -14,7 +14,7 @@ import { ingestZernioInbound } from "../zernio/ingest";
 import { ehEcoDeEnvioEmVoo, JANELA_DO_ECO_MS } from "../eco-de-envio";
 import { paraMensagemDoIngest, parsearEventos, type EventoSocial, type PlataformaSocial } from "./parser";
 
-export const PROVIDER_META_SOCIAL = "meta_social";
+export { PROVIDER_META_SOCIAL } from "./constantes";
 
 export type SessaoDaConta = { id: string; organization_id: string };
 

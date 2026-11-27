@@ -6,7 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { decryptWebhookSecret } from "@/lib/webhooks/secrets";
 
-import { PROVIDER_META_SOCIAL } from "./entrega";
+import { PROVIDER_META_SOCIAL } from "./constantes";
 import type { PlataformaSocial } from "./parser";
 
 export type CredencialDaConta = { token: string; paginaId: string; plataforma: PlataformaSocial };
