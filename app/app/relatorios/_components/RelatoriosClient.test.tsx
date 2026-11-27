@@ -9,6 +9,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("./AbaAtendimento", () => ({ AbaAtendimento: () => <p>conteudo-atendimento</p> }));
 vi.mock("./AbaLeadsEVendas", () => ({ AbaLeadsEVendas: () => <p>conteudo-leads</p> }));
+vi.mock("./AbaIA", () => ({ AbaIA: () => <p>conteudo-ia</p> }));
 vi.mock("./AbaFunil", () => ({ AbaFunil: () => <p>conteudo-funil</p> }));
 vi.mock("./AbaMetasEProdutos", () => ({ AbaMetasEProdutos: () => <p>conteudo-metas</p> }));
 vi.mock("./AbaTemplates", () => ({ AbaTemplates: () => <p>conteudo-templates</p> }));
@@ -51,7 +52,7 @@ describe("RelatoriosClient", () => {
 
   it("aba ainda não construída avisa que chega na próxima etapa", () => {
     render(<RelatoriosClient {...props} />);
-    const aba = screen.getByRole("tab", { name: "Consumo de IA" });
+    const aba = screen.getByRole("tab", { name: "Envio agendado" });
     fireEvent.mouseDown(aba);
     fireEvent.click(aba);
     expect(screen.getByText("Chega na próxima etapa dos relatórios.")).toBeTruthy();

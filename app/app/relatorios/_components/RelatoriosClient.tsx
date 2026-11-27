@@ -16,6 +16,7 @@ import { inicioDoDia, somarDias } from "@/lib/relatorios/periodo";
 
 import { AbaAtendimento } from "./AbaAtendimento";
 import { AbaFunil } from "./AbaFunil";
+import { AbaIA } from "./AbaIA";
 import { AbaLeadsEVendas } from "./AbaLeadsEVendas";
 import { AbaMetasEProdutos } from "./AbaMetasEProdutos";
 import { AbaTemplates } from "./AbaTemplates";
@@ -171,7 +172,10 @@ export function RelatoriosClient({
         <TabsContent value="metas" className="mt-4">
           <AbaMetasEProdutos filtros={filtros} moeda={moeda} pessoas={pessoas} />
         </TabsContent>
-        {(["ia", "envio"] as const).map((v) => (
+        <TabsContent value="ia" className="mt-4">
+          <AbaIA filtros={filtros} />
+        </TabsContent>
+        {(["envio"] as const).map((v) => (
           <TabsContent key={v} value={v} className="mt-4">
             <div className="rounded-lg border border-dashed border-border bg-surface p-10 text-center text-sm text-text-muted">
               {t("Chega na próxima etapa dos relatórios.")}
