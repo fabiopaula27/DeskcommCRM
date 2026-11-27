@@ -9,6 +9,7 @@
  * emite `message` E `message.any` para a mesma mensagem (corrida). Ver migration
  * 0027 para o modelo de identidade canônica.
  */
+import { ehEcoDoRelatorio } from "@/lib/relatorios/eco-do-envio";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { lancarFalhaDeIngestao } from "@/lib/waha/falha-transitoria";
 
@@ -1562,6 +1563,16 @@ async function handleOutboundFromUserPhone(
   // como `fromMe`, e só o dedup por `external_id` a reconhece como nossa.
   const grupo = grupoDoEnvio(p, chatId);
   if (!p.id) return;
+  // O PDF do relatório agendado volta como `fromMe`: não vira conversa (9113).
+  if (
+    await ehEcoDoRelatorio(admin, session.organization_id, {
+      fromMe: true,
+      mime: mediaMimeOf(p),
+      nomeArquivo: mediaFilenameOf(p),
+    })
+  ) {
+    return;
+  }
   // O pino não tem `body` nem mídia: sem a terceira condição ele era descartado aqui.
   if (!p.body && !localizacaoDoPayload(p) && !mediaUrlOf(p) && !p.hasMedia) return;
   // Idem inbound. Aqui o caso que mais dói é o chatId vazio: é literalmente o

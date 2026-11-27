@@ -26,6 +26,7 @@ describe("rodada do envio agendado", () => {
       fusoDe: async () => "America/Sao_Paulo",
       enviar,
       gravar,
+      reservar: async () => true,
       agora: new Date("2026-11-27T11:05:00Z"),
     });
     expect(r).toEqual({ enviados: 1, falhas: 0, pulados: 0 });
@@ -40,6 +41,7 @@ describe("rodada do envio agendado", () => {
       fusoDe: async () => "America/Sao_Paulo",
       enviar: async () => ({ enviado: false, falhas: ["E-mail: not_configured"] }),
       gravar,
+      reservar: async () => true,
       agora: new Date("2026-11-27T11:05:00Z"),
     });
     expect(gravar).toHaveBeenCalledWith(ORG, expect.objectContaining({
@@ -59,8 +61,46 @@ describe("rodada do envio agendado", () => {
       fusoDe: async () => "America/Sao_Paulo",
       enviar,
       gravar: async () => undefined,
+      reservar: async () => true,
       agora: new Date("2026-11-27T11:05:00Z"),
     });
     expect(r).toEqual({ enviados: 1, falhas: 1, pulados: 1 });
+  });
+
+  it("período já reservado por outra rodada não é enviado de novo", async () => {
+    const enviar = vi.fn(async () => ({ enviado: true, falhas: [] }));
+    const r = await rodarEnviosAgendados({
+      agendamentos: [linha()],
+      paradas: new Set(),
+      fusoDe: async () => "America/Sao_Paulo",
+      enviar,
+      gravar: async () => undefined,
+      reservar: async () => false,
+      agora: new Date("2026-11-27T11:05:00Z"),
+    });
+    expect(enviar).not.toHaveBeenCalled();
+    expect(r.enviados).toBe(0);
+  });
+
+  it("para de pegar empresas novas quando o tempo da rodada acaba", async () => {
+    let relogio = 0;
+    const enviar = vi.fn(async () => {
+      relogio += 200_000;
+      return { enviado: true, falhas: [] };
+    });
+    const outra = "33333333-3333-4333-8333-333333333333";
+    const r = await rodarEnviosAgendados({
+      agendamentos: [linha(), linha({ organization_id: outra })],
+      paradas: new Set(),
+      fusoDe: async () => "America/Sao_Paulo",
+      enviar,
+      gravar: async () => undefined,
+      reservar: async () => true,
+      agora: new Date("2026-11-27T11:05:00Z"),
+      prazoMs: 150_000,
+      decorrido: () => relogio,
+    });
+    expect(enviar).toHaveBeenCalledTimes(1);
+    expect(r.enviados).toBe(1);
   });
 });

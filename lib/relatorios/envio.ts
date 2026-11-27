@@ -50,18 +50,19 @@ export async function enviarRelatorio(
   const falhas: string[] = [];
   let algumOk = false;
 
-  if (emails.length > 0) {
+  // Um e-mail por destinatário: ninguém vê o endereço dos outros.
+  for (const email of emails) {
     try {
       const r = await deps.enviarEmail({
-        to: emails,
+        to: [email],
         subject: legenda,
         html: `<p>Olá,</p><p>Segue em anexo o relatório de <strong>${empresa.replace(/[<>&]/g, "")}</strong> do período ${quando}.</p>`,
         attachments: [{ filename: arquivo, content: pdf, contentType: "application/pdf" }],
       });
       if (r.ok) algumOk = true;
-      else falhas.push(`E-mail: ${r.error ?? "falhou"}`);
+      else falhas.push(`E-mail ${email}: ${r.error ?? "falhou"}`);
     } catch (e) {
-      falhas.push(`E-mail: ${e instanceof Error ? e.message : String(e)}`);
+      falhas.push(`E-mail ${email}: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 

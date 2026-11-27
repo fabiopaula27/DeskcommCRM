@@ -10,6 +10,7 @@ import { marcaDaSaida } from "@/lib/branding/saida";
 import { sendEmail } from "@/lib/email/roteador";
 
 import { coletarDadosDoPdf, type Nomeador } from "./coletar";
+import { marcarEnvioDoRelatorio } from "./eco-do-envio";
 import type { DepsDoEnvio } from "./envio";
 import { gerarPdfDoRelatorio } from "./pdf";
 
@@ -71,6 +72,8 @@ export function depsReais(
     },
 
     async publicarPdf(pdf, nomeDoArquivo) {
+      // A marca vem ANTES do envio: o eco pode chegar antes da resposta HTTP.
+      await marcarEnvioDoRelatorio(admin, args.orgId, nomeDoArquivo);
       const caminho = `${args.orgId}/${randomUUID()}-${nomeDoArquivo}`;
       const bucket = admin.storage.from("relatorios");
       const { error } = await bucket.upload(caminho, pdf, { contentType: "application/pdf", upsert: false });

@@ -32,6 +32,11 @@ type Resposta =
   | { disponivel: false; motivo: string }
   | { disponivel: true; agendamento: Agendamento | null; canais: Canal[] };
 
+/** De 15 em 15 minutos: a cadência do agendador. */
+const HORARIOS = Array.from({ length: 96 }, (_, i) =>
+  `${String(Math.floor(i / 4)).padStart(2, "0")}:${String((i % 4) * 15).padStart(2, "0")}`,
+);
+
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TELEFONE = /^\+[1-9]\d{7,14}$/;
 
@@ -64,7 +69,8 @@ export function AbaEnvioAgendado() {
     if (a) {
       setAtivo(a.ativo);
       setFrequencia(a.frequencia);
-      setHorario(a.horario.slice(0, 5));
+      const h = a.horario.slice(0, 5);
+      setHorario(HORARIOS.includes(h) ? h : "08:00");
       setEmails(a.emails.length > 0 ? a.emails : [""]);
       setTelefones(a.telefones);
       setCanal(a.channel_session_id ?? "");
@@ -140,7 +146,18 @@ export function AbaEnvioAgendado() {
           </label>
           <label className="flex flex-col gap-1 text-sm">
             {t("Horário")}
-            <Input type="time" value={horario} onChange={(e) => setHorario(e.target.value)} />
+            <select
+              aria-label={t("Horário")}
+              value={horario}
+              onChange={(e) => setHorario(e.target.value)}
+              className="h-10 rounded-md border border-border bg-surface px-2"
+            >
+              {HORARIOS.map((h) => (
+                <option key={h} value={h}>
+                  {h}
+                </option>
+              ))}
+            </select>
             <span className="text-xs text-text-muted">{t("No fuso da empresa. Pode chegar até 15 minutos depois.")}</span>
           </label>
         </div>

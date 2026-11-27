@@ -29,6 +29,7 @@ async function handle(req: NextRequest): Promise<Response> {
     .from("report_schedules")
     .select("organization_id, ativo, frequencia, horario, emails, telefones, channel_session_id, ultimo_periodo, tentativas_do_periodo")
     .eq("ativo", true)
+    .order("updated_at", { ascending: true })
     .limit(TETO);
   if (error) {
     // Migration 9113 não aplicada: nada a fazer, sem erro em loop no log.
@@ -48,6 +49,19 @@ async function handle(req: NextRequest): Promise<Response> {
     paradas: new Set(await idsDeOrgsParadas(admin)),
     fusoDe: async (orgId) => fusoUtilizavel((await empresa(orgId)).tz),
     agora: new Date(),
+    // Folga para o maxDuration de 300 s: empresa que não coube fica para a próxima rodada.
+    prazoMs: 240_000,
+    async reservar(orgId, chave) {
+      const { data: reservado, error: erro } = await admin.rpc("fn_reservar_envio_de_relatorio" as never, {
+        p_org: orgId,
+        p_chave: chave,
+      } as never);
+      if (erro) {
+        logger.error("[report-schedules] reserva falhou", { organization_id: orgId, error: erro.message, requestId });
+        return false;
+      }
+      return reservado === true;
+    },
     async enviar(linha, periodo, tz) {
       const e = await empresa(linha.organization_id);
       const deps = depsReais(admin, {

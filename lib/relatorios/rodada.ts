@@ -30,13 +30,21 @@ export async function rodarEnviosAgendados(args: {
   fusoDe: (orgId: string) => Promise<string>;
   enviar: (linha: LinhaDoAgendamento, periodo: PeriodoDoEnvio, tz: string) => Promise<{ enviado: boolean; falhas: string[] }>;
   gravar: (orgId: string, desfecho: Desfecho) => Promise<void>;
+  /** Reserva o período no banco ANTES de enviar; `false` = outra rodada já pegou. */
+  reservar: (orgId: string, chave: string) => Promise<boolean>;
   agora: Date;
+  /** Tempo da rodada: passou dele, não pega empresa nova (a próxima rodada segue). */
+  prazoMs?: number;
+  decorrido?: () => number;
 }): Promise<{ enviados: number; falhas: number; pulados: number }> {
+  const inicio = Date.now();
+  const decorrido = args.decorrido ?? (() => Date.now() - inicio);
   let enviados = 0;
   let falhas = 0;
   let pulados = 0;
 
   for (const linha of args.agendamentos) {
+    if (args.prazoMs !== undefined && decorrido() >= args.prazoMs) break;
     if (args.paradas.has(linha.organization_id)) {
       pulados += 1;
       continue;
@@ -44,6 +52,8 @@ export async function rodarEnviosAgendados(args: {
     const tz = await args.fusoDe(linha.organization_id);
     const periodo = envioDevido(linha, args.agora, tz);
     if (!periodo) continue;
+
+    if (!(await args.reservar(linha.organization_id, periodo.chave))) continue;
 
     const tentativaAnterior =
       linha.ultimo_periodo === `falhou:${periodo.chave}` ? linha.tentativas_do_periodo : 0;

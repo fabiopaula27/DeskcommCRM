@@ -20,7 +20,8 @@ const telefone = z.string().trim().regex(/^\+[1-9]\d{7,14}$/, "use o formato +55
 const corpo = z.object({
   ativo: z.boolean(),
   frequencia: z.enum(["diario", "semanal", "mensal"]),
-  horario: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "horário no formato HH:MM"),
+  // De 15 em 15 minutos: é a cadência do cron. 23:50 nunca dispararia no dia certo.
+  horario: z.string().regex(/^([01]\d|2[0-3]):(00|15|30|45)$/, "escolha um horário de 15 em 15 minutos"),
   emails: z.array(z.string().trim().email()).max(20),
   telefones: z.array(telefone).max(20),
   channel_session_id: z.string().uuid().nullable(),

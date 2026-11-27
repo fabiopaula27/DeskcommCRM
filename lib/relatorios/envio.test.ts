@@ -19,9 +19,10 @@ describe("enviar relatório agendado", () => {
     const d = deps();
     const r = await enviarRelatorio(d, { emails: ["a@x.com", "b@x.com"], telefones: ["+5516999990000"], periodo, empresa: "Loja" });
     expect(r).toEqual({ enviado: true, falhas: [] });
-    expect(d.enviarEmail).toHaveBeenCalledTimes(1);
+    // Um e-mail por destinatário: ninguém vê o endereço dos outros.
+    expect(d.enviarEmail).toHaveBeenCalledTimes(2);
     const email = vi.mocked(d.enviarEmail).mock.calls[0]![0];
-    expect(email.to).toEqual(["a@x.com", "b@x.com"]);
+    expect(email.to).toEqual(["a@x.com"]);
     expect(email.attachments[0]!.filename).toBe("relatorio-loja-2026-11-26.pdf");
     expect(d.enviarWhatsapp).toHaveBeenCalledWith("+5516999990000", "https://storage/relatorio.pdf", "relatorio-loja-2026-11-26.pdf", expect.any(String));
   });
@@ -36,7 +37,7 @@ describe("enviar relatório agendado", () => {
   it("e-mail recusado pelo provedor conta como falha", async () => {
     const d = deps({ enviarEmail: vi.fn(async () => ({ ok: false, error: "not_configured" })) });
     const r = await enviarRelatorio(d, { emails: ["a@x.com"], telefones: [], periodo, empresa: "Loja" });
-    expect(r).toEqual({ enviado: false, falhas: ["E-mail: not_configured"] });
+    expect(r).toEqual({ enviado: false, falhas: ["E-mail a@x.com: not_configured"] });
   });
 
   it("sem nenhum destino não gera PDF", async () => {

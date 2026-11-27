@@ -30,3 +30,34 @@ revoke all on table public.report_schedules from anon, authenticated;
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('relatorios', 'relatorios', false, 10485760, array['application/pdf'])
 on conflict (id) do nothing;
+
+-- O eco do PDF enviado pelo WhatsApp não vira conversa (lib/relatorios/eco-do-envio.ts).
+create table if not exists public.report_send_marks (
+  id bigint generated always as identity primary key,
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  nome_arquivo text not null,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_report_send_marks_busca on public.report_send_marks (organization_id, nome_arquivo, expires_at);
+alter table public.report_send_marks enable row level security;
+revoke all on table public.report_send_marks from anon, authenticated;
+
+-- Reserva do período ANTES de enviar: duas rodadas (ou uma rodada cortada no
+-- meio) nunca mandam o mesmo relatório duas vezes. Só reserva se o período
+-- ainda não foi enviado nem está sendo enviado.
+create or replace function public.fn_reservar_envio_de_relatorio(p_org uuid, p_chave text)
+returns boolean
+language sql security invoker set search_path = '' as $$
+  with r as (
+    update public.report_schedules
+       set ultimo_periodo = 'enviando:' || p_chave, updated_at = now()
+     where organization_id = p_org
+       and ultimo_periodo is distinct from p_chave
+       and ultimo_periodo is distinct from 'enviando:' || p_chave
+    returning 1
+  )
+  select exists (select 1 from r);
+$$;
+revoke all on function public.fn_reservar_envio_de_relatorio(uuid, text) from public, anon, authenticated;
+grant execute on function public.fn_reservar_envio_de_relatorio(uuid, text) to service_role;
