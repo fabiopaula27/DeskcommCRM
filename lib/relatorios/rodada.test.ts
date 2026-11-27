@@ -158,4 +158,19 @@ describe("rodada do envio agendado", () => {
     });
     expect(enviar).not.toHaveBeenCalled();
   });
+
+  it("telefone pendente que saiu da lista não recebe a nova tentativa", async () => {
+    const enviar = vi.fn(async () => ({ enviado: true, falhas: [], telefonesComFalha: [] }));
+    await rodarEnviosAgendados({
+      agendamentos: [linha({ ultimo_periodo: "diario:2026-11-26", telefones: ["+5511"], telefones_pendentes: ["+5522"] })],
+      paradas: new Set(),
+      fusoDe: async () => "America/Sao_Paulo",
+      enviar,
+      gravar: async () => undefined,
+      reservar: async () => true,
+      reservarReenvio: async () => ["+5522"],
+      agora: new Date("2026-11-27T11:20:00Z"),
+    });
+    expect(enviar).not.toHaveBeenCalled();
+  });
 });

@@ -65,6 +65,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       p_from: ctx.from.toISOString(),
       p_to: ctx.to.toISOString(),
       p_setor: setor,
+      p_user: uuidOuNulo(ctx.busca.get("user_id")),
     });
     if (!porFila.error && Array.isArray(porFila.data)) {
       b.distribuicoes = porFila.data as Bruto["distribuicoes"];

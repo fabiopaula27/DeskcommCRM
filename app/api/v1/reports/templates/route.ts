@@ -61,7 +61,10 @@ export async function GET(req: NextRequest): Promise<Response> {
       nomes: b.nomes,
       // Sem categoria conhecida (nula ou antiga) não tem tarifa e fica fora do gasto.
       sem_categoria: (() => {
-        const fora = b.por_template.filter((t) => tarifaDaCategoria(t.categoria) === 0);
+        const conhecidas = ["MARKETING", "UTILITY", "AUTHENTICATION"];
+        const fora = b.por_template.filter(
+          (t) => t.enviados > 0 && !conhecidas.includes((t.categoria ?? "").toUpperCase()),
+        );
         return { templates: fora.length, enviados: fora.reduce((s, t) => s + t.enviados, 0) };
       })(),
     },

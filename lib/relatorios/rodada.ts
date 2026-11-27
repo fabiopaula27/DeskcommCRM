@@ -68,8 +68,10 @@ export async function rodarEnviosAgendados(args: {
     if (!periodo) {
       const reenvio = reenvioDevido(linha, args.agora, tz);
       if (!reenvio) continue;
-      const pendentes = await args.reservarReenvio(linha.organization_id, reenvio.chave);
-      if (!pendentes || pendentes.length === 0) continue;
+      const reservados = await args.reservarReenvio(linha.organization_id, reenvio.chave);
+      // Só quem ainda está na lista: telefone removido depois da falha não recebe.
+      const pendentes = (reservados ?? []).filter((t) => linha.telefones.includes(t));
+      if (pendentes.length === 0) continue;
       let r: Resultado;
       try {
         r = await args.enviar({ ...linha, emails: [], telefones: pendentes }, reenvio, tz);

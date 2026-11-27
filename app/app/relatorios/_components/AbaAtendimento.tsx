@@ -185,7 +185,7 @@ export function AbaAtendimento({
 
       <Bloco
         titulo={t("Distribuição de conversas")}
-        descricao={t("Quantas conversas cada pessoa recebeu da fila no período.")}
+        descricao={t("Quantas conversas cada pessoa recebeu no período. O filtro de fila usa a fila atual de cada conversa.")}
         acao={
           filas.length > 0 ? (
             <select

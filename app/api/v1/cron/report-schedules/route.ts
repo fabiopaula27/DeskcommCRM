@@ -39,14 +39,6 @@ async function handle(req: NextRequest): Promise<Response> {
     return fail("internal_error", "Falha ao ler agendamentos.", 500, { requestId });
   }
 
-  // Limpeza dos PDFs com mais de 7 dias e das marcas de eco vencidas. Nunca impede o envio.
-  try {
-    await limparPdfsAntigos(admin.storage.from("relatorios") as never, new Date());
-    await admin.from("report_send_marks").delete().lt("expires_at", new Date().toISOString());
-  } catch (e) {
-    logger.warn("[report-schedules] limpeza falhou", { error: e instanceof Error ? e.message : String(e), requestId });
-  }
-
   const empresas = new Map<string, Awaited<ReturnType<typeof dadosDaEmpresa>>>();
   const empresa = async (orgId: string) => {
     if (!empresas.has(orgId)) empresas.set(orgId, await dadosDaEmpresa(admin, orgId));
@@ -76,10 +68,12 @@ async function handle(req: NextRequest): Promise<Response> {
         p_org: orgId,
         p_chave: chave,
       } as never);
-      if (erro) return null;
+      if (erro) {
+        logger.error("[report-schedules] reserva de reenvio falhou", { organization_id: orgId, error: erro.message, requestId });
+        return null;
+      }
       const linhas = lista as unknown;
-      if (Array.isArray(linhas) && linhas.length > 0 && Array.isArray(linhas[0])) return linhas[0] as string[];
-      return Array.isArray(linhas) && linhas.every((x) => typeof x === "string") && linhas.length > 0 ? (linhas as string[]) : null;
+      return Array.isArray(linhas) && linhas.length > 0 && linhas.every((x) => typeof x === "string") ? (linhas as string[]) : null;
     },
     async enviar(linha, periodo, tz) {
       const e = await empresa(linha.organization_id);
@@ -101,6 +95,17 @@ async function handle(req: NextRequest): Promise<Response> {
       if (erro) logger.error("[report-schedules] desfecho não gravado", { organization_id: orgId, error: erro.message, requestId });
     },
   });
+
+  // Limpeza DEPOIS dos envios: o tempo dela não come o prazo da rodada.
+  // Falha aqui nunca derruba nada — vira log.
+  try {
+    const apagados = await limparPdfsAntigos(admin.storage.from("relatorios") as never, new Date());
+    const { error: erroMarcas } = await admin.from("report_send_marks").delete().lt("expires_at", new Date().toISOString());
+    if (erroMarcas) logger.warn("[report-schedules] marcas vencidas não apagadas", { error: erroMarcas.message, requestId });
+    if (apagados > 0) logger.info("[report-schedules] PDFs antigos apagados", { apagados, requestId });
+  } catch (e) {
+    logger.warn("[report-schedules] limpeza falhou", { error: e instanceof Error ? e.message : String(e), requestId });
+  }
 
   return ok(resultado, { requestId });
 }

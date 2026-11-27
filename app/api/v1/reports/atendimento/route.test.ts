@@ -89,9 +89,9 @@ describe("GET /api/v1/reports/atendimento", () => {
     const builder = { select: () => builder, eq: () => builder, maybeSingle: async () => org };
     vi.mocked(createClient).mockResolvedValue({ from: () => builder, rpc } as never);
     const setor = "44444444-4444-4444-8444-444444444444";
-    const res = await GET(new NextRequest(`${URL_BASE}?setor_id=${setor}`));
+    const res = await GET(new NextRequest(`${URL_BASE}?setor_id=${setor}&user_id=${setor}`));
     const corpo = await res.json();
-    expect(rpc).toHaveBeenCalledWith("fn_relatorio_distribuicoes", expect.objectContaining({ p_setor: setor }));
+    expect(rpc).toHaveBeenCalledWith("fn_relatorio_distribuicoes", expect.objectContaining({ p_setor: setor, p_user: setor }));
     expect(corpo.data.distribuicoes[0].total).toBe(31);
   });
 });
