@@ -187,6 +187,10 @@ export const CHANNEL_PROVIDER_EVOLUTION: ChannelProvider = "evolution";
 export function ehProviderEvolution(provider: string | null | undefined): boolean {
   return provider === CHANNEL_PROVIDER_EVOLUTION;
 }
+/** Canal Messenger/Instagram direto: tem cartão próprio em Conexões › Redes sociais. */
+export function ehProviderMetaSocial(provider: string | null | undefined): boolean {
+  return provider === CHANNEL_PROVIDER_META_SOCIAL;
+}
 /** Chamada de voz WhatsApp (spec 18). Não transporta mensagem — ver abaixo. */
 export const CHANNEL_PROVIDER_WACALLS: ChannelProvider = "wacalls";
 

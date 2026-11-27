@@ -14,6 +14,7 @@ import { appDaMeta } from "@/lib/channels/meta/app";
 import { conectarContas, configDoLoginMeta, listarContas, trocarCodigo } from "@/lib/channels/meta-social/conexao";
 import { COOKIE_DO_VINCULO_META, enderecoDeRetorno, voltarParaConexoes } from "@/lib/channels/meta-social/volta";
 import { env } from "@/lib/env";
+import { supportCallbackWriteAllowed } from "@/lib/impersonate/support";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -45,6 +46,19 @@ export async function GET(req: NextRequest) {
   if (!roleAtLeast((vinculo as { role?: string } | null)?.role, "admin")) {
     return voltarParaConexoes({ meta: "erro", motivo: "sem_permissao" });
   }
+
+  if (!(await supportCallbackWriteAllowed(organizationId, userId, estado.authSessionId))) {
+    return voltarParaConexoes({ meta: "erro", motivo: "retorno_nao_verificavel" });
+  }
+  // Uso único do `state` (mesma tabela de nonces da Agenda do Google): um
+  // retorno repetido não reconecta nada nem reaproveita um código.
+  const { error: nonceUsado } = await admin.from("calendar_oauth_nonces").insert({
+    nonce: estado.nonce,
+    organization_id: organizationId,
+    user_id: userId,
+    expira_em: new Date(estado.expiraEmMs).toISOString(),
+  });
+  if (nonceUsado) return voltarParaConexoes({ meta: "erro", motivo: "retorno_nao_verificavel" });
 
   const code = url.searchParams.get("code");
   const config = configDoLoginMeta();

@@ -10,7 +10,7 @@ import { MAX_MEDIA_BYTES, MediaTooLargeError } from "@/lib/messaging/media/types
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import { credencialDaConta } from "../meta-social/credenciais";
-import { ErroGraph, foraDaJanela, graphSocial, tokenCaiu } from "../meta-social/graph";
+import { ErroGraph, foraDaJanela, graphSocial, pessoaIndisponivel, tokenCaiu } from "../meta-social/graph";
 import { socialMessageId } from "../social/catalog";
 import type { ChannelAdapter, OutboundEnvelope } from "../types";
 
@@ -18,6 +18,9 @@ export const MENSAGEM_FORA_DA_JANELA =
   "A Meta só permite responder até 24h depois da última mensagem do lead. Espere ele escrever de novo.";
 export const MENSAGEM_TOKEN_CAIU =
   "A conexão com a página caiu (senha trocada ou permissão retirada). Reconecte em Conexões › Redes sociais.";
+
+export const MENSAGEM_PESSOA_INDISPONIVEL =
+  "Esta pessoa não está disponível no Messenger/Instagram agora (pode ter bloqueado a página).";
 
 /** Tipo do envio → tipo de anexo da Send API. */
 export function tipoDoAnexo(kind: string, mime: string): "image" | "audio" | "video" | "file" {
@@ -50,6 +53,7 @@ export function corposDoEnvio(envelope: Pick<OutboundEnvelope, "kind" | "body" |
 function traduzirErro(e: unknown): Error {
   if (foraDaJanela(e)) return new Error(`meta_social_fora_da_janela: ${MENSAGEM_FORA_DA_JANELA}`);
   if (tokenCaiu(e)) return new Error(`meta_social_token_invalido: ${MENSAGEM_TOKEN_CAIU}`);
+  if (pessoaIndisponivel(e)) return new Error(`meta_social_pessoa_indisponivel: ${MENSAGEM_PESSOA_INDISPONIVEL}`);
   if (e instanceof ErroGraph) return new Error(`meta_social_send_failed: ${e.status} ${e.code ?? ""}/${e.subcode ?? ""} ${e.message}`.trim());
   return e instanceof Error ? e : new Error(String(e));
 }
@@ -88,7 +92,9 @@ export const metaSocialAdapter: ChannelAdapter = {
       await graphSocial(cred.token, input.sessionRef, { params: { fields: "id" } });
       return { reachable: true, status: "WORKING", detail: null };
     } catch (e) {
-      if (tokenCaiu(e) || (e instanceof ErroGraph && e.status < 500)) return { reachable: true, status: "FAILED", detail: "reconectar" };
+      // Só token caído pede reconectar. Limite de uso (4, 17, 32, 613) e
+      // permissão passageira também voltam 4xx, e não são canal caído.
+      if (tokenCaiu(e)) return { reachable: true, status: "FAILED", detail: "reconectar" };
       return { reachable: false, status: null, detail: "meta_indisponivel" };
     }
   },

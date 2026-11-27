@@ -71,3 +71,14 @@ describe("corposDoEnvio", () => {
     expect(doc.message.attachment.type).toBe("file");
   });
 });
+
+describe("revisão: saúde e erros", () => {
+  it("limite de uso (código 4, HTTP 400) não marca o canal como caído", async () => {
+    respostas = [{ status: 400, body: { error: { code: 4, message: "rate limit" } } }];
+    expect(await metaSocialAdapter.checkHealth!({ organizationId: "org", sessionRef: "PAGE1" })).toMatchObject({ reachable: false, status: null });
+  });
+  it("551 diz que a pessoa está indisponível, não que passou das 24h", async () => {
+    respostas = [{ status: 400, body: { error: { code: 551, message: "user unavailable" } } }];
+    await expect(metaSocialAdapter.send({ ...ENV, kind: "text", body: "oi" } as never)).rejects.toThrow(/não está disponível/);
+  });
+});

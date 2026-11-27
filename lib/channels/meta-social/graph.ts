@@ -24,8 +24,13 @@ export function tokenCaiu(e: unknown): boolean {
 export function foraDaJanela(e: unknown): boolean {
   return (
     e instanceof ErroGraph &&
-    (e.subcode === 2018278 || e.subcode === 2534022 || e.code === 551 || (e.code === 10 && e.subcode === 2018065))
+    (e.subcode === 2018278 || e.subcode === 2534022 || (e.code === 10 && e.subcode === 2018065))
   );
+}
+
+/** 551: a pessoa não está disponível (bloqueou a página ou a conta saiu do ar). */
+export function pessoaIndisponivel(e: unknown): boolean {
+  return e instanceof ErroGraph && e.code === 551;
 }
 
 export async function graphSocial<T = Record<string, unknown>>(

@@ -20,6 +20,8 @@ export type EventoSocial = {
   texto: string | null;
   anexos: { type: string; url: string }[];
   eco: boolean;
+  /** No eco do Messenger: o app que enviou. Igual ao app do CRM = envio do próprio CRM. */
+  appId: string | null;
   em: string | null;
   referral: unknown | null;
 };
@@ -51,7 +53,8 @@ export function parsearEventos(payload: unknown): EventoSocial[] {
         .map((a) => {
           const ao = obj(a);
           const url = str(obj(ao?.payload)?.url);
-          return ao && url ? { type: str(ao.type) ?? "file", url } : null;
+          if (!ao || !url || ao.type === "fallback") return null;
+          return { type: str(ao.type) ?? "file", url };
         })
         .filter((a): a is { type: string; url: string } => a !== null);
       const ts = typeof m.timestamp === "number" ? m.timestamp : null;
@@ -63,6 +66,7 @@ export function parsearEventos(payload: unknown): EventoSocial[] {
         texto: str(msg.text),
         anexos,
         eco,
+        appId: msg.app_id === undefined || msg.app_id === null ? null : String(msg.app_id),
         em: ts ? new Date(ts).toISOString() : null,
         referral: m.referral ?? msg.referral ?? null,
       });

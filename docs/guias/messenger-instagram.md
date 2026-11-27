@@ -89,6 +89,10 @@ META_APP_SECRET=<Chave secreta do app>
 META_WEBHOOK_VERIFY_TOKEN=<uma senha longa que você inventa>
 ```
 
+**Os quatro valores têm de ser do MESMO app.** Se o App Secret também foi salvo
+na tela de configuração do WhatsApp oficial do CRM, ele vale no lugar do do
+ambiente — confira que é do mesmo app do `META_APP_ID`.
+
 `META_APP_SECRET` e `META_WEBHOOK_VERIFY_TOKEN` podem já existir (WhatsApp
 oficial) — **use os mesmos**, é o mesmo app. Depois: **Implantar**.
 

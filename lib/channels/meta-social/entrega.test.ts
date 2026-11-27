@@ -38,3 +38,53 @@ describe("processarEntrega", () => {
     expect(r.falhas).toBe(1);
   });
 });
+
+import { ehEcoDoCrm } from "./entrega";
+import { parsearEventos } from "./parser";
+
+const eco = (appId?: number) =>
+  parsearEventos({
+    object: "page",
+    entry: [{ id: "P1", messaging: [{ sender: { id: "P1" }, recipient: { id: "LEAD" }, timestamp: 1, message: { mid: "m9", text: "Olá!", is_echo: true, ...(appId ? { app_id: appId } : {}) } }] }],
+  })[0]!;
+
+describe("eco do próprio CRM", () => {
+  const sessao = { id: "s1", organization_id: "orgA" };
+
+  it("Messenger: eco com o app_id do CRM é nosso; de outro app (Business Suite, celular) não é", async () => {
+    expect(await ehEcoDoCrm({} as never, eco(123), sessao, "123")).toBe(true);
+    expect(await ehEcoDoCrm({} as never, eco(999), sessao, "123")).toBe(false);
+  });
+
+  it("mensagem do lead nunca é eco", async () => {
+    const doLead = parsearEventos(payload("P1"))[0]!;
+    expect(await ehEcoDoCrm({} as never, doLead, sessao, "123")).toBe(false);
+  });
+
+  it("Instagram sem app_id: legenda de mídia que o CRM acabou de mandar é eco", async () => {
+    const tabelas: string[] = [];
+    const db = {
+      from: (t: string) => {
+        tabelas.push(t);
+        const q: Record<string, unknown> = {};
+        for (const m of ["select", "eq", "in", "neq", "is", "gte"]) q[m] = () => q;
+        q.maybeSingle = async () => ({ data: { id: "c1" }, error: null });
+        q.limit = async () => ({ data: t === "messages" && tabelas.filter((x) => x === "messages").length === 2 ? [{ id: "m" }] : [], error: null });
+        return q;
+      },
+    };
+    expect(await ehEcoDoCrm(db as never, eco(), sessao, "123")).toBe(true);
+  });
+
+  it("eco do CRM não vai ao ingest (nem duplica, nem pausa a IA)", async () => {
+    const ingerir = vi.fn();
+    const r = await processarEntrega({} as never, { object: "page", entry: [{ id: "P1", messaging: [{ sender: { id: "P1" }, recipient: { id: "LEAD" }, timestamp: 1, message: { mid: "m9", text: "Olá!", is_echo: true, app_id: 123 } }] }] }, {
+      ingerir,
+      sessao: vi.fn(async () => sessao),
+      perfil: vi.fn(async () => ({ nome: null, usuario: null })),
+      ecoDoCrm: vi.fn(async () => true),
+    });
+    expect(ingerir).not.toHaveBeenCalled();
+    expect(r.ignorados).toBe(1);
+  });
+});

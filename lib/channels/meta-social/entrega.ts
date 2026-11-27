@@ -11,7 +11,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 
 import { ingestZernioInbound } from "../zernio/ingest";
-import { paraMensagemDoIngest, parsearEventos, type PlataformaSocial } from "./parser";
+import { ehEcoDeEnvioEmVoo, JANELA_DO_ECO_MS } from "../eco-de-envio";
+import { paraMensagemDoIngest, parsearEventos, type EventoSocial, type PlataformaSocial } from "./parser";
 
 export const PROVIDER_META_SOCIAL = "meta_social";
 
@@ -62,22 +63,85 @@ export async function perfilDoLead(
   }
 }
 
+/**
+ * O eco é de um envio do PRÓPRIO CRM? Então já existe (ou vai existir) a linha
+ * da mensagem, e gravá-lo de novo duplicaria o balão e pausaria a IA como se
+ * alguém tivesse respondido pelo celular.
+ *  1. Messenger: o eco traz `app_id` — igual ao app do CRM, é nosso.
+ *  2. Sem `app_id` (Instagram): envio nosso ainda em voo na conversa
+ *     (`ehEcoDeEnvioEmVoo`, o mesmo guarda dos outros canais) ou a LEGENDA de
+ *     uma mídia que acabamos de mandar (ela sai como uma segunda mensagem).
+ */
+export async function ehEcoDoCrm(
+  db: SupabaseClient,
+  e: EventoSocial,
+  sessao: SessaoDaConta,
+  appDoCrm: string | null = process.env.META_APP_ID?.trim() || null,
+): Promise<boolean> {
+  if (!e.eco) return false;
+  if (e.appId && appDoCrm) return e.appId === appDoCrm;
+  const { data: conversa } = await db
+    .from("conversations")
+    .select("id")
+    .eq("organization_id", sessao.organization_id)
+    .eq("channel_session_id", sessao.id)
+    .eq("provider_conversation_id", e.leadId)
+    .maybeSingle();
+  const conversationId = (conversa as { id: string } | null)?.id;
+  if (!conversationId) return false;
+  if (
+    await ehEcoDeEnvioEmVoo(db, {
+      organizationId: sessao.organization_id,
+      conversationId,
+      corpo: e.texto,
+      ehMidia: e.anexos.length > 0,
+      tag: "meta-social.entrega",
+    })
+  ) {
+    return true;
+  }
+  const texto = (e.texto ?? "").trim();
+  if (!texto || e.anexos.length > 0) return false;
+  const { data: legendas } = await db
+    .from("messages")
+    .select("id")
+    .eq("organization_id", sessao.organization_id)
+    .eq("conversation_id", conversationId)
+    .eq("direction", "outbound")
+    .in("sent_via", ["ai", "user", "automation", "system"])
+    .neq("type", "text")
+    .eq("body", texto)
+    .gte("created_at", new Date(Date.now() - JANELA_DO_ECO_MS).toISOString())
+    .limit(1);
+  return (legendas ?? []).length > 0;
+}
+
 export type ResultadoDaEntrega = { recebidos: number; gravados: number; ignorados: number; falhas: number };
 
 export async function processarEntrega(
   db: SupabaseClient,
   payload: unknown,
-  deps: { ingerir?: typeof ingestZernioInbound; sessao?: typeof sessaoDaConta; perfil?: typeof perfilDoLead } = {},
+  deps: {
+    ingerir?: typeof ingestZernioInbound;
+    sessao?: typeof sessaoDaConta;
+    perfil?: typeof perfilDoLead;
+    ecoDoCrm?: typeof ehEcoDoCrm;
+  } = {},
 ): Promise<ResultadoDaEntrega> {
   const ingerir = deps.ingerir ?? ingestZernioInbound;
   const acharSessao = deps.sessao ?? sessaoDaConta;
   const lerPerfil = deps.perfil ?? perfilDoLead;
+  const ecoDoCrm = deps.ecoDoCrm ?? ehEcoDoCrm;
   const eventos = parsearEventos(payload);
   const r: ResultadoDaEntrega = { recebidos: eventos.length, gravados: 0, ignorados: 0, falhas: 0 };
   for (const e of eventos) {
     try {
       const sessao = await acharSessao(db, e.contaId, e.plataforma);
       if (!sessao) {
+        r.ignorados++;
+        continue;
+      }
+      if (await ecoDoCrm(db, e, sessao)) {
         r.ignorados++;
         continue;
       }
