@@ -490,7 +490,7 @@ export function ContactDetailClient({ contactId, paineisDeModulo = [], acessosMc
 
         <TabsContent value="overview" className="mt-4">
           <Card className="p-4">
-            <dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+            <dl className="grid grid-cols-1 gap-x-16 gap-y-5 text-sm md:grid-cols-2 lg:gap-x-24">
               <div>
                 <dt className="text-xs uppercase text-muted-foreground">{t("Nome")}</dt>
                 <dd className="mt-1">{contact.name ?? "—"}</dd>
